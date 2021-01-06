@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ -z $XDG_CURRENT_DESKTOP ]; then
+    export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
+fi
+
+exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
+
+# the following for Bionic
+# exec gnome-session --session=regolith --disable-acceleration-check "$@"

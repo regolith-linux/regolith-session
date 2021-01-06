@@ -1,0 +1,23 @@
+Source: regolith-session
+Section: x11
+Priority: optional
+Maintainer: Regolith Linux <regolith.linux@gmail.com>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.2
+Homepage: https://github.com/regolith-linux/regolith-desktop
+Vcs-Git: https://github.com/regolith-linux/regolith-desktop.git
+
+Package: regolith-session-flashback
+Architecture: any
+Depends: ${misc:Depends},
+    dbus,
+    gnome-flashback,
+    gnome-session-bin,
+    x11-xserver-utils
+Provides: regolith-desktop-session
+Conflicts: regolith-desktop-session, session-shortcuts
+Replaces: regolith-desktop-session
+Description: Regolith customized gnome-flashback session
+ This package contains the desktop and xsession configuration 
+ necessary to start a Regolith gnome-flashback / i3 desktop session. 
+ It is based on https://github.com/deuill/i3-gnome-flashback.
