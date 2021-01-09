@@ -1,3 +1,10 @@
+regolith-session (0.1.1-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * push some deps down from desktop to session
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 09 Jan 2021 09:06:26 -0800
+
 regolith-session (0.1.0-1) focal; urgency=medium
 
   [ Ken Gilmer ]

@@ -13,7 +13,18 @@ Depends: ${misc:Depends},
     dbus,
     gnome-flashback,
     gnome-session-bin,
-    x11-xserver-utils
+    mutter-common,
+    regolith-i3-gaps-config,
+    x11-xserver-utils,
+    regolith-look-ubuntu | regolith-look,    
+    regolith-styles,
+    xorg,
+    xrescat
+Recommends:
+    regolith-unclutter-xfixes
+Suggests:
+    update-manager,
+    software-properties-gtk
 Provides: regolith-desktop-session
 Conflicts: regolith-desktop-session, session-shortcuts
 Replaces: regolith-desktop-session
