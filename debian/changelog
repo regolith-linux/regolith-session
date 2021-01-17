@@ -1,3 +1,11 @@
+regolith-session (0.2.1-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Update Xresource loading logic. Cleanup dependencies.
+  * Vend Xresources
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Jan 2021 09:25:02 -0800
+
 regolith-session (0.2.0-1) focal; urgency=medium
 
   * Update Xresource loading heursitics 

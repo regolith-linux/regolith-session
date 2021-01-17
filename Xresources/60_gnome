@@ -1,0 +1,5 @@
+gnome.gtk.theme:          gnome_gtk_theme
+gnome.icon.theme:         gnome_icon_theme
+gnome.wallpaper:          desktop_wallpaper
+gnome.terminal.font:      terminal_font
+gnome.terminal.scrollbar: terminal_scrollbar
