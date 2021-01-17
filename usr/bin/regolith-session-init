@@ -89,7 +89,7 @@ start_i3_partial_config_mode() {
 }
 
 load_look_xres() {
-    LOOK_STYLE_ROOT_PATH=$(xrescat regolith.style.root $DEFAULT_XRESOURCE_LOOK_FILE)
+    LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
 
     # Load Regolith Style root Xresource file 
     xrdb -merge "$LOOK_STYLE_ROOT_PATH"

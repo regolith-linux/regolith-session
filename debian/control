@@ -16,12 +16,9 @@ Depends: ${misc:Depends},
     mutter-common,
     regolith-i3-gaps-config,
     x11-xserver-utils,
-    regolith-look-ubuntu | regolith-look,    
-    regolith-styles,
+    regolith-look-minimal,
     xorg,
-    xrescat
-Recommends:
-    regolith-unclutter-xfixes
+    xrescat    
 Suggests:
     update-manager,
     software-properties-gtk
