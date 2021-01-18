@@ -1,3 +1,10 @@
+regolith-session (0.2.2-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Enable launch of wm, disable failing command
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 18 Jan 2021 10:08:42 -0800
+
 regolith-session (0.2.1-1) focal; urgency=medium
 
   [ Ken Gilmer ]

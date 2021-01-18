@@ -68,7 +68,7 @@ generate_partial_config_header() {
 start_i3_default_config_mode() {
     resolve_default_config_file
     echo "Regolith is launching i3-gaps with $I3_CONFIG_FILE"
-    echo "i3 -c $I3_CONFIG_FILE"
+    i3 -c "$I3_CONFIG_FILE"
 }
 
 # Launch i3 in partial config file
@@ -85,7 +85,7 @@ start_i3_partial_config_mode() {
     done
 
     echo "Regolith is launching i3-gaps with $I3_CONFIG_FILE"
-    echo "i3 -c $GENERATED_CONFIG_FILE"
+    i3 -c "$GENERATED_CONFIG_FILE"
 }
 
 load_look_xres() {
@@ -132,7 +132,8 @@ load_user_xres
 
 load_look_xres
 
-xres_i3_cleanup
+# following function is causing script to silently exit
+# xres_i3_cleanup
 
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 # See https://zork.net/~st/jottings/gnome-i3.html for details
