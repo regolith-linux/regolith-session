@@ -1,3 +1,10 @@
+regolith-session (0.2.3-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Bug fixes and reorder Xres load order
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 28 Jan 2021 21:29:22 -0800
+
 regolith-session (0.2.2-1) focal; urgency=medium
 
   [ Ken Gilmer ]
