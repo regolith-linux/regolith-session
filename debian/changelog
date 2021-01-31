@@ -1,3 +1,10 @@
+regolith-session (0.2.5-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix first session file issue
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 31 Jan 2021 08:32:04 -0800
+
 regolith-session (0.2.4-1) focal; urgency=medium
 
   [ Ken Gilmer ]

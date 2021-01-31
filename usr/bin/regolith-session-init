@@ -112,7 +112,12 @@ xres_i3_cleanup() {
 # 2. ~/.config/regolith/Xresources
 # 3. /etc/regolith/Xresources.d
 load_regolith_xres() {
-    GENERATED_XRES_FILE="$HOME/.config/regolith/Xresources-generated"
+    GENERATED_XRES_DIR="$HOME/.config/regolith"
+    GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
+    if [ ! -d "$GENERATED_XRES_DIR" ]; then
+        mkdir -p "$GENERATED_XRES_DIR"
+    fi
+    
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
 
     echo "!+ $LOOK_STYLE_ROOT_PATH ($(date +%s))" > "$GENERATED_XRES_FILE"
