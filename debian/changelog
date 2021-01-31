@@ -1,3 +1,10 @@
+regolith-session (0.2.4-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Change Xresource loading strategy to handle cpp transience
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 30 Jan 2021 17:41:12 -0800
+
 regolith-session (0.2.3-1) focal; urgency=medium
 
   [ Ken Gilmer ]
