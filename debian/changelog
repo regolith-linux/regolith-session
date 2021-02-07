@@ -1,3 +1,10 @@
+regolith-session (0.2.6-1ubuntu1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Use printf for emitting file merge, add linefeed prefix to appends.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 06 Feb 2021 18:05:23 -0800
+
 regolith-session (0.2.5-1) focal; urgency=medium
 
   [ Ken Gilmer ]

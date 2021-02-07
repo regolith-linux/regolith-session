@@ -84,7 +84,7 @@ start_i3_partial_config_mode() {
     generate_partial_config_header
 
     for filename in "$I3_PARTIAL_DIR"/*; do
-        echo "#+ $filename ($(date +%s))" >> "$GENERATED_CONFIG_FILE"
+        printf "\n\#+ Merged from %s at (%s)" "$filename" "$(date)" >> "$GENERATED_CONFIG_FILE"
         cat "$filename" >> "$GENERATED_CONFIG_FILE"
     done
 
@@ -120,16 +120,16 @@ load_regolith_xres() {
     
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
 
-    echo "!+ $LOOK_STYLE_ROOT_PATH ($(date +%s))" > "$GENERATED_XRES_FILE"
+    echo "!+ $LOOK_STYLE_ROOT_PATH ($(date))" > "$GENERATED_XRES_FILE"
     cat "$LOOK_STYLE_ROOT_PATH" >> "$GENERATED_XRES_FILE"
 
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        echo "!+ $USER_XRESOURCE_OVERRIDE_FILE ($(date +%s))" >> "$GENERATED_XRES_FILE"
+        printf "\n\!+ Merged from %s at (%s)" "$USER_XRESOURCE_OVERRIDE_FILE" "$(date)" >> "$GENERATED_XRES_FILE"
         cat "$USER_XRESOURCE_OVERRIDE_FILE" >> "$GENERATED_XRES_FILE"
     fi
 
     for filename in "$ETC_XRESOURCE_DIR"/*; do
-        echo "!+ $filename ($(date +%s))" >> "$GENERATED_XRES_FILE"
+        printf "\n\!+ Merged from %s at (%s)" "$filename" "$(date)" >> "$GENERATED_XRES_FILE"
         cat "$filename" >> "$GENERATED_XRES_FILE"
     done
 
