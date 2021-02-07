@@ -1,3 +1,10 @@
+regolith-session (0.2.8-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Depend on i3 agnostic config package
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 07 Feb 2021 14:37:40 -0800
+
 regolith-session (0.2.7-1) focal; urgency=medium
 
   [ Ken Gilmer ]
