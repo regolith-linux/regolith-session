@@ -1,3 +1,10 @@
+regolith-session (0.2.7-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix comment header formatting
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 06 Feb 2021 22:11:14 -0800
+
 regolith-session (0.2.6-1ubuntu1) focal; urgency=medium
 
   [ Ken Gilmer ]
