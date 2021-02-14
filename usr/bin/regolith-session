@@ -1,10 +1,22 @@
 #!/bin/bash
+# shellcheck disable=SC1091
 
-if [ -z $XDG_CURRENT_DESKTOP ]; then
+set -Eeu -o pipefail
+
+if [ -z "$XDG_CURRENT_DESKTOP" ]; then
     export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
 fi
 
-exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
+# Attempt to determine gnome-session version based on OS version
+if [ -f /etc/os-release ]; then 
+    source /etc/os-release
 
-# the following for Bionic
-# exec gnome-session --session=regolith --disable-acceleration-check "$@"
+    # Note: distro-support; add other type checks for non-systemd
+    if [ "$VERSION_CODENAME" == "bionic" ]; then
+        exec gnome-session --session=regolith --disable-acceleration-check "$@"
+    else
+        exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
+    fi 
+else 
+    exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
+fi

@@ -1,3 +1,10 @@
+regolith-session (0.2.9-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Add Xresources for terminal colors. Enable launching gnome-session from bionic.  Various cleanup.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 13 Feb 2021 16:49:42 -0800
+
 regolith-session (0.2.8-1) focal; urgency=medium
 
   [ Ken Gilmer ]

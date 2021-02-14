@@ -1,5 +1,27 @@
 gnome.gtk.theme:          gnome_gtk_theme
 gnome.icon.theme:         gnome_icon_theme
 gnome.wallpaper:          desktop_wallpaper
+
+gnome.terminal.color0:    color_base03
+gnome.terminal.color1:    color_red
+gnome.terminal.color2:    color_ltgreen
+gnome.terminal.color3:    color_yellow
+gnome.terminal.color4:    color_blue
+gnome.terminal.color5:    color_violet
+gnome.terminal.color6:    color_cyan
+gnome.terminal.color7:    color_base00
+gnome.terminal.color8:    color_base01
+gnome.terminal.color9:    color_red
+gnome.terminal.color10:   color_green
+gnome.terminal.color11:   color_ltyellow
+gnome.terminal.color12:   color_ltblue
+gnome.terminal.color13:   color_magenta
+gnome.terminal.color14:   color_ltcyan
+gnome.terminal.color15:   color_base3
 gnome.terminal.font:      terminal_font
 gnome.terminal.scrollbar: terminal_scrollbar
+
+! -- Optional Configuration
+!gnome.terminal.audible-bell:                       true/false
+!gnome.terminal.use-transparent-background:         true/false
+!gnome.terminal.background-transparency-percent:    0 - 99
