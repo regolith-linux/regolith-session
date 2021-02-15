@@ -1,8 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1091
 
-set -Eeu -o pipefail
-
 if [ -z "$XDG_CURRENT_DESKTOP" ]; then
     export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
 fi

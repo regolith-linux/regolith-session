@@ -1,3 +1,10 @@
+regolith-session (0.2.10-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Remove strict mode for session script
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 14 Feb 2021 21:42:34 -0800
+
 regolith-session (0.2.9-1) focal; urgency=medium
 
   [ Ken Gilmer ]
