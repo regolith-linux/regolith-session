@@ -10,7 +10,7 @@ if [ -f /etc/os-release ]; then
     source /etc/os-release
 
     # Note: distro-support; add other type checks for non-systemd
-    if [ "$VERSION_CODENAME" == "bionic" ]; then
+    if [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" ]]; then
         exec gnome-session --session=regolith --disable-acceleration-check "$@"
     else
         exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"

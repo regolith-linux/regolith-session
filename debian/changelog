@@ -1,3 +1,10 @@
+regolith-session (0.2.11-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Check for buster for older gnome-session variant
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 14 Feb 2021 22:05:18 -0800
+
 regolith-session (0.2.10-1) focal; urgency=medium
 
   [ Ken Gilmer ]
