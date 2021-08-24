@@ -1,3 +1,10 @@
+regolith-session (0.2.12-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Depend on updated look package, add virtual look package.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 23 Aug 2021 22:08:50 -0700
+
 regolith-session (0.2.11-1) focal; urgency=medium
 
   [ Ken Gilmer ]

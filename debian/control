@@ -16,7 +16,7 @@ Depends: ${misc:Depends},
     mutter-common,
     regolith-i3-config,
     x11-xserver-utils,
-    regolith-look-minimal,
+    regolith-look-default | regolith-look,
     xorg,
     xrescat    
 Suggests:
