@@ -1,3 +1,10 @@
+regolith-session (0.2.13-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix path to renamed default look
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 24 Aug 2021 20:35:34 -0700
+
 regolith-session (0.2.12-1) focal; urgency=medium
 
   [ Ken Gilmer ]
