@@ -1,3 +1,10 @@
+regolith-session (0.3.0-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Import regolith-look script from deprecated package regolith-styles.  Add build automation.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 01 Sep 2021 08:46:00 -0700
+
 regolith-session (0.2.13-1) focal; urgency=medium
 
   [ Ken Gilmer ]

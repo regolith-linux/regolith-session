@@ -1,0 +1,128 @@
+#!/bin/bash
+# This is a helper script to perform common tasks with regolith looks.
+
+if [ "$#" -lt 1 ]; then
+    echo "Usage: regolith-look <command>"
+    echo "Actions: "
+    echo "    refresh - Update the current session look based on Xresources values"
+    echo "    list - Display currently installed looks in the /etc/regolith/styles directory"
+    echo "    stage - Copy Xresource and i3 config files in the user directory"
+    echo "    set <look> - Write a global override file in the user dir to specify the desired look"
+    exit 1
+fi
+
+COMMAND=$1
+
+# File Locations - Baseline
+BASELINE_XRESOURCE_FILE="$HOME/.Xresources"
+
+# File Locations - System Defaults
+DEFAULT_XRESOURCE_LOOK_FILE="/usr/share/regolith-look/default/root"
+ETC_XRESOURCE_DIR="/etc/regolith/Xresources.d"
+
+# File Locations - Optional User Overrides
+USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith/Xresources"
+USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith/Xresources.d"
+
+
+# Load default Xresources
+load_standard_xres() {    
+    if [ -f "$BASELINE_XRESOURCE_FILE" ]; then
+        xrdb -merge "$BASELINE_XRESOURCE_FILE"
+    fi
+}
+
+# Generate a Xresource file from merging the following into ~/.config/regolith/Xresources-generated:
+# 1. /usr/share/regolith-look/default/root or override defined in ~/.Xresources
+# 2. ~/.config/regolith/Xresources
+# 3. /etc/regolith/Xresources.d
+load_regolith_xres() {
+    GENERATED_XRES_DIR="$HOME/.config/regolith"
+    GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
+    if [ ! -d "$GENERATED_XRES_DIR" ]; then
+        mkdir -p "$GENERATED_XRES_DIR"
+    fi
+    
+    LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
+
+    echo "!+ Merged $LOOK_STYLE_ROOT_PATH from ($(date))" > "$GENERATED_XRES_FILE"
+    cat "$LOOK_STYLE_ROOT_PATH" >> "$GENERATED_XRES_FILE"
+
+    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        printf "\n!+ Merged from %s at (%s)\n" "$USER_XRESOURCE_OVERRIDE_FILE" "$(date)" >> "$GENERATED_XRES_FILE"
+        cat "$USER_XRESOURCE_OVERRIDE_FILE" >> "$GENERATED_XRES_FILE"
+    fi
+
+    for filename in "$ETC_XRESOURCE_DIR"/*; do
+        printf "\n!+ Merged from %s at (%s)\n" "$filename" "$(date)" >> "$GENERATED_XRES_FILE"
+        cat "$filename" >> "$GENERATED_XRES_FILE"
+    done
+
+    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$GENERATED_XRES_FILE"
+}
+
+refresh() {
+    load_standard_xres
+    load_regolith_xres
+
+    # Change the quotes in workspace names from double to to single.
+    # Due to a limitation of the preprocessor they have double quotes.
+    # The i3-wm workspace command fails with double quotes in the name
+    xrdb -query | grep i3-wm.workspace. | sed "s/\"/'/g" | xrdb -merge
+
+    # Set the theme from Xresources values.
+    gsettings set org.gnome.desktop.interface gtk-theme "$(xrescat gnome.gtk.theme Adwaita)"
+    gsettings set org.gnome.desktop.wm.preferences theme "$(xrescat gnome.wm.theme Adwaita)"
+    gsettings set org.gnome.desktop.interface icon-theme "$(xrescat gnome.icon.theme Adwaita)"
+
+    # Set the wallpaper
+    WALLPAPER_FILE=$(xrescat gnome.wallpaper)
+    if [[ -n $WALLPAPER_FILE ]]; then
+        gsettings set org.gnome.desktop.background picture-uri "file://$(eval echo $WALLPAPER_FILE)"
+    fi
+
+    if hash gnome-terminal 2>/dev/null; then # Check if gnome-terminal is on the path
+        UPDATE_TERM_FLAG=$(xrescat gnome.terminal.update true)
+        if [[ "$UPDATE_TERM_FLAG" == "true" && -f "/usr/bin/create-regolith-term-profile" ]] ; then
+            /usr/bin/create-regolith-term-profile
+        fi
+    fi
+
+    # restart i3-wm after merging Xresources
+    i3-msg -q restart
+}
+
+# Upsert Xresource key regolith.look.path and refresh session
+set_look() {
+    if [ ! -f "$LOOK" ]; then
+        echo "Aborting, invalid file: $LOOK"
+        exit 1
+    fi
+
+    # disable existing declaration
+    sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$BASELINE_XRESOURCE_FILE"
+
+    # add new declaration
+    echo "regolith.look.path: $LOOK" >> "$BASELINE_XRESOURCE_FILE"
+
+    refresh
+}
+
+if [ "$COMMAND" == "refresh" ]; then
+    refresh
+elif [ "$COMMAND" == "stage" ]; then
+    stage
+elif [ "$COMMAND" == "set" ]; then
+    LOOK=$2
+    if [ -z $LOOK ]; then
+        echo "Must specify a look to set."
+        exit 1
+    else
+        set_look
+    fi
+elif [ "$COMMAND" == "list" ]; then
+    find /etc/regolith/styles/ -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
+else
+    echo "Unrecognized command: $COMMAND"
+    exit 1
+fi
