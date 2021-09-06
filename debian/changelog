@@ -1,3 +1,10 @@
+regolith-session (0.4.0-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * remove all manual merge logic for i3 config files in prep for i3 v4.20
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 05 Sep 2021 17:24:49 -0700
+
 regolith-session (0.3.0-1) focal; urgency=medium
 
   [ Ken Gilmer ]
