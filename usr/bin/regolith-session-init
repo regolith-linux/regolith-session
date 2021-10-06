@@ -94,7 +94,7 @@ i3 -c "$I3_CONFIG_FILE"
 # Run user's post logout script if script. Post logout means that the X session is closed at this point.
 if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
     echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
-	timeout 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
+	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
 fi
 
 # Close session when i3 exits.
