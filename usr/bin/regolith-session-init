@@ -17,6 +17,9 @@ DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith/i3/config"
 # File Locations - Baseline
 BASELINE_XRESOURCE_FILE="$HOME/.Xresources"
 
+# File location - user scripts
+USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith/logout"
+
 # Determine where the default i3 config file is
 # Sets I3_CONFIG_FILE
 resolve_default_config_file() {
@@ -87,6 +90,12 @@ fi
 resolve_default_config_file
 echo "Regolith is launching i3-gaps with $I3_CONFIG_FILE"
 i3 -c "$I3_CONFIG_FILE"
+
+# Run user's post logout script if script. Post logout means that the X session is closed at this point.
+if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
+    echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
+	timeout 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
+fi
 
 # Close session when i3 exits.
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
