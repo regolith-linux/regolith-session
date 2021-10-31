@@ -18,7 +18,7 @@ Depends: ${misc:Depends},
     x11-xserver-utils,
     regolith-look-default | regolith-look,
     xorg,
-    xrescat    
+    xrescat
 Suggests:
     update-manager,
     software-properties-gtk
@@ -26,6 +26,6 @@ Provides: regolith-desktop-session
 Conflicts: regolith-desktop-session, session-shortcuts
 Replaces: regolith-desktop-session
 Description: Regolith customized gnome-flashback session
- This package contains the desktop and xsession configuration 
- necessary to start a Regolith gnome-flashback / i3 desktop session. 
+ This package contains the desktop and xsession configuration
+ necessary to start a Regolith gnome-flashback / i3 desktop session.
  It is based on https://github.com/deuill/i3-gnome-flashback.
