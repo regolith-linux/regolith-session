@@ -2,4 +2,5 @@ usr/share/gnome-session/sessions
 usr/share/xsessions
 usr/share/applications
 usr/bin
+usr/lib/regolith
 Xresources/60_gnome /etc/regolith/Xresources.d

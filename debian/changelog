@@ -1,3 +1,14 @@
+regolith-session (0.4.1-1) focal; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * Add user defined post logoff script
+  * Make timeout verbose
+
+  [ Ken Gilmer ]
+  * Extract common session logic to lib file.  Fix regolith-look refresh and list
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Nov 2021 11:41:13 -0800
+
 regolith-session (0.4.0-1) focal; urgency=medium
 
   [ Ken Gilmer ]
