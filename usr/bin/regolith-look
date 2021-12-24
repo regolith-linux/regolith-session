@@ -51,16 +51,19 @@ refresh() {
 
 # Upsert Xresource key regolith.look.path and refresh session
 set_look() {
-    if [ ! -f "$LOOK" ]; then
-        echo "Aborting, invalid file: $LOOK"
+    if [ ! -d "$LOOK_PATH" ]; then
+        echo "Aborting, invalid look directory: $LOOK_PATH"
         exit 1
     fi
 
-    # disable existing declaration
-    sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$BASELINE_XRESOURCE_FILE"
+    # Unset any existing values
+    if [ -f "$BASELINE_XRESOURCE_FILE" ]; then
+        # disable existing declaration
+        sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$BASELINE_XRESOURCE_FILE"
+    fi
 
     # add new declaration
-    echo "regolith.look.path: $LOOK" >> "$BASELINE_XRESOURCE_FILE"
+    echo "regolith.look.path: $LOOK_PATH" >> "$BASELINE_XRESOURCE_FILE"
 
     refresh
 }
@@ -70,11 +73,12 @@ if [ "$COMMAND" == "refresh" ]; then
 elif [ "$COMMAND" == "stage" ]; then
     stage
 elif [ "$COMMAND" == "set" ]; then
-    LOOK=$2
-    if [ -z $LOOK ]; then
+    LOOK_NAME=$2
+    if [ -z "$LOOK_NAME" ]; then
         echo "Must specify a look to set."
         exit 1
     else
+        LOOK_PATH="/usr/share/regolith-look/$LOOK_NAME"
         set_look
     fi
 elif [ "$COMMAND" == "list" ]; then

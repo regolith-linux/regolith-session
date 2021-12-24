@@ -49,7 +49,7 @@ xres_i3_cleanup() {
 # 1. /usr/share/regolith-look/default/root or override defined in ~/.Xresources
 # 2. ~/.config/regolith/Xresources
 # 3. /etc/regolith/Xresources.d
-load_regolith_xres() {
+load_regolith_xres() {    
     GENERATED_XRES_DIR="$HOME/.cache/regolith"
     GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
     if [ ! -d "$GENERATED_XRES_DIR" ]; then
@@ -57,9 +57,10 @@ load_regolith_xres() {
     fi
     
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
+    LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
-    echo "!+ Merged $LOOK_STYLE_ROOT_PATH from ($(date))" > "$GENERATED_XRES_FILE"
-    cat "$LOOK_STYLE_ROOT_PATH" >> "$GENERATED_XRES_FILE"
+    echo "!+ Merged $LOOK_STYLE_ROOT_FILE from ($(date))" > "$GENERATED_XRES_FILE"
+    cat "$LOOK_STYLE_ROOT_FILE" >> "$GENERATED_XRES_FILE"
 
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         printf "\n!+ Merged from %s at (%s)\n" "$USER_XRESOURCE_OVERRIDE_FILE" "$(date)" >> "$GENERATED_XRES_FILE"

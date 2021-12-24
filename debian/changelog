@@ -1,3 +1,10 @@
+regolith-session (0.4.2-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Several bug fixes for Regolith 2 Xresource merging/loading
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 24 Dec 2021 09:00:05 -0800
+
 regolith-session (0.4.1-1) focal; urgency=medium
 
   [ Carlos Fernandez Sanz ]

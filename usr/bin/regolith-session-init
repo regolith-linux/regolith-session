@@ -8,7 +8,7 @@ source /usr/lib/regolith/regolith-session-common.sh
 # --------- Script Main -----------
 
 load_standard_xres  # ~/.Xresources
-load_regolith_xres  # ~/.config/regolith/Xresources
+load_regolith_xres  # ~/.cache/regolith/Xresources
 
 # following function is causing script to silently exit
 # xres_i3_cleanup
