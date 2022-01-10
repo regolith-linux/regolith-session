@@ -6,7 +6,7 @@ USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith/Xresources"
 USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith/Xresources.d"
 
 # File Locations - System Defaults
-DEFAULT_XRESOURCE_LOOK_FILE="/usr/share/regolith-look/default/root"
+DEFAULT_XRESOURCE_LOOK_PATH="/usr/share/regolith-look/default"
 ETC_XRESOURCE_DIR="/etc/regolith/Xresources.d"
 
 DEFAULT_SYS_I3_CONFIG_FILE="/etc/regolith/i3/config"
@@ -56,7 +56,7 @@ load_regolith_xres() {
         mkdir -p "$GENERATED_XRES_DIR"
     fi
     
-    LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path $DEFAULT_XRESOURCE_LOOK_FILE)
+    LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
     LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
     echo "!+ Merged $LOOK_STYLE_ROOT_FILE from ($(date))" > "$GENERATED_XRES_FILE"

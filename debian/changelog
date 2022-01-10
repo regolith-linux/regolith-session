@@ -1,3 +1,10 @@
+regolith-session (0.4.3-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix session init bug with invalid look path root
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 10 Jan 2022 08:56:21 -0800
+
 regolith-session (0.4.2-1) focal; urgency=medium
 
   [ Ken Gilmer ]
