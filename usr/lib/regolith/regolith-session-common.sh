@@ -7,7 +7,7 @@ USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith2/Xresources.d"
 
 # File Locations - System Defaults
 DEFAULT_XRESOURCE_LOOK_PATH="/usr/share/regolith-look/default"
-ETC_XRESOURCE_DIR="/etc/regolith2/Xresources.d"
+ETC_XRESOURCE_DIR="/etc/regolith/Xresources.d"
 
 DEFAULT_SYS_I3_CONFIG_FILE="/etc/regolith/i3/config"
 DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith2/i3/config"
@@ -67,10 +67,12 @@ load_regolith_xres() {
         cat "$USER_XRESOURCE_OVERRIDE_FILE" >> "$GENERATED_XRES_FILE"
     fi
 
-    for filename in "$ETC_XRESOURCE_DIR"/*; do
-        printf "\n!+ Merged from %s at (%s)\n" "$filename" "$(date)" >> "$GENERATED_XRES_FILE"
-        cat "$filename" >> "$GENERATED_XRES_FILE"
-    done
+    if [ -d "$ETC_XRESOURCE_DIR" ]; then
+        for filename in "$ETC_XRESOURCE_DIR"/*; do
+            printf "\n!+ Merged from %s at (%s)\n" "$filename" "$(date)" >> "$GENERATED_XRES_FILE"
+            cat "$filename" >> "$GENERATED_XRES_FILE"
+        done
+    fi
 
     xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$GENERATED_XRES_FILE"
 }

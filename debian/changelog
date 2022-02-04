@@ -1,3 +1,10 @@
+regolith-session (0.4.6-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix session init issue reported in https://github.com/regolith-linux/voulage/issues/2
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 04 Feb 2022 07:22:54 -0800
+
 regolith-session (0.4.5-1) focal; urgency=medium
 
   [ Ken Gilmer ]
