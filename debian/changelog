@@ -1,3 +1,10 @@
+regolith-session (0.4.5-1) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Move to regolith2 config dir
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 03 Feb 2022 21:51:28 -0800
+
 regolith-session (0.4.4-1) focal; urgency=medium
 
   [ Ken Gilmer ]

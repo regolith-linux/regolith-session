@@ -2,15 +2,15 @@
 # This script contains common functions for Regolith session management
 
 # File Locations - Optional User Overrides
-USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith/Xresources"
-USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith/Xresources.d"
+USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith2/Xresources"
+USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith2/Xresources.d"
 
 # File Locations - System Defaults
 DEFAULT_XRESOURCE_LOOK_PATH="/usr/share/regolith-look/default"
-ETC_XRESOURCE_DIR="/etc/regolith/Xresources.d"
+ETC_XRESOURCE_DIR="/etc/regolith2/Xresources.d"
 
 DEFAULT_SYS_I3_CONFIG_FILE="/etc/regolith/i3/config"
-DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith/i3/config"
+DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith2/i3/config"
 
 # File Locations - Baseline
 BASELINE_XRESOURCE_FILE="$HOME/.Xresources"
@@ -19,7 +19,7 @@ BASELINE_XRESOURCE_FILE="$HOME/.Xresources"
 DEFAULT_LOOK_ROOT="/usr/share/regolith-look"
 
 # File location - user scripts
-USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith/logout"
+USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith2/logout"
 
 # Determine where the default i3 config file is
 # Sets I3_CONFIG_FILE
@@ -45,12 +45,12 @@ xres_i3_cleanup() {
     xrdb -query |grep i3-wm.workspace.|sed "s/\"/'/g"|xrdb -merge
 }
 
-# Generate a Xresource file from merging the following into ~/.config/regolith/Xresources-generated:
+# Generate a Xresource file from merging the following into ~/.config/regolith2/Xresources-generated:
 # 1. /usr/share/regolith-look/default/root or override defined in ~/.Xresources
-# 2. ~/.config/regolith/Xresources
+# 2. ~/.config/regolith2/Xresources
 # 3. /etc/regolith/Xresources.d
 load_regolith_xres() {    
-    GENERATED_XRES_DIR="$HOME/.cache/regolith"
+    GENERATED_XRES_DIR="$HOME/.cache/regolith2"
     GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
     if [ ! -d "$GENERATED_XRES_DIR" ]; then
         mkdir -p "$GENERATED_XRES_DIR"
@@ -74,6 +74,3 @@ load_regolith_xres() {
 
     xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$GENERATED_XRES_FILE"
 }
-
-
-
