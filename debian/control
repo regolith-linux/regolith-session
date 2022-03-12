@@ -23,7 +23,7 @@ Suggests:
     update-manager,
     software-properties-gtk
 Provides: regolith-desktop-session
-Conflicts: regolith-desktop-session, session-shortcuts
+Conflicts: regolith-desktop-session, session-shortcuts, regolith-styles
 Replaces: regolith-desktop-session
 Description: Regolith customized gnome-flashback session
  This package contains the desktop and xsession configuration
