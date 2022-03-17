@@ -10,7 +10,7 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: regolith-look <command>"
     echo "Actions: "
     echo "    refresh - Update the current session look based on Xresources values"
-    echo "    list - Display currently installed looks in the /etc/regolith/styles directory"
+    echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
     echo "    stage - Copy Xresource and i3 config files in the user directory"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
     exit 1

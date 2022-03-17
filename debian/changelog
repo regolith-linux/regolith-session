@@ -1,3 +1,10 @@
+regolith-session (0.4.8) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Move Xresources.d from /etc to /usr/share/regolith due to apt policy issues with files in /etc.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 16 Mar 2022 20:26:55 -0700
+
 regolith-session (0.4.7) focal; urgency=medium
 
   [ Ken Gilmer ]

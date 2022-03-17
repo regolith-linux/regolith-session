@@ -7,7 +7,7 @@ USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith2/Xresources.d"
 
 # File Locations - System Defaults
 DEFAULT_XRESOURCE_LOOK_PATH="/usr/share/regolith-look/default"
-ETC_XRESOURCE_DIR="/etc/regolith/Xresources.d"
+ETC_XRESOURCE_DIR="/usr/share/regolith/Xresources.d"
 
 DEFAULT_SYS_I3_CONFIG_FILE="/etc/regolith/i3/config"
 DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith2/i3/config"
@@ -48,7 +48,7 @@ xres_i3_cleanup() {
 # Generate a Xresource file from merging the following into ~/.config/regolith2/Xresources-generated:
 # 1. /usr/share/regolith-look/default/root or override defined in ~/.Xresources
 # 2. ~/.config/regolith2/Xresources
-# 3. /etc/regolith/Xresources.d
+# 3. /usr/share/regolith/Xresources.d
 load_regolith_xres() {    
     GENERATED_XRES_DIR="$HOME/.cache/regolith2"
     GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
