@@ -1,3 +1,10 @@
+regolith-session (0.4.9) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Test that wallpaper file exists before setting
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 20 Mar 2022 10:18:49 -0700
+
 regolith-session (0.4.8) focal; urgency=medium
 
   [ Ken Gilmer ]

@@ -33,7 +33,7 @@ refresh() {
 
     # Set the wallpaper
     WALLPAPER_FILE=$(xrescat gnome.wallpaper)
-    if [[ -n $WALLPAPER_FILE ]]; then
+    if [[ -f "$WALLPAPER_FILE" ]]; then
         gsettings set org.gnome.desktop.background picture-uri "file://$(eval echo $WALLPAPER_FILE)"
     fi
 
