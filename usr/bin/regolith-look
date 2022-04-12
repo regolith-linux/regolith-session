@@ -19,8 +19,10 @@ fi
 COMMAND=$1
 
 refresh() {
-    load_standard_xres
-    load_regolith_xres
+    load_standard_xres # Load first to allow override of default look
+    load_regolith_xres # Find all Xresource partials and merge them
+    load_standard_xres # Re-apply any values that may have been overwritten
+
     # Change the quotes in workspace names from double to to single.
     # Due to a limitation of the preprocessor they have double quotes.
     # The i3-wm workspace command fails with double quotes in the name

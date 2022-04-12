@@ -1,3 +1,10 @@
+regolith-session (0.4.11) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Re-apply root Xresources after regolith Xres to ensure user values are set
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 11 Apr 2022 22:46:04 -0700
+
 regolith-session (0.4.10) focal; urgency=medium
 
   [ Ken Gilmer ]
