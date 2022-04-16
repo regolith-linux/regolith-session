@@ -1,3 +1,10 @@
+regolith-session (0.4.12) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix reference to term profile script and add soft dep to address problem in https://github.com/regolith-linux/regolith-look-extra/pull/1.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 16 Apr 2022 16:46:59 -0700
+
 regolith-session (0.4.11) focal; urgency=medium
 
   [ Ken Gilmer ]

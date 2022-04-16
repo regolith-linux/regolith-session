@@ -42,8 +42,8 @@ refresh() {
     # Configure the gnome-terminal profile
     if hash gnome-terminal 2>/dev/null; then # Check if gnome-terminal is on the path
         UPDATE_TERM_FLAG=$(xrescat gnome.terminal.update true)
-        if [[ "$UPDATE_TERM_FLAG" == "true" && -f "/usr/bin/create-regolith-term-profile" ]] ; then
-            /usr/bin/create-regolith-term-profile
+        if [[ "$UPDATE_TERM_FLAG" == "true" && -f "/usr/bin/regolith-init-term-profile" ]] ; then
+            /usr/bin/regolith-init-term-profile
         fi
     fi
 

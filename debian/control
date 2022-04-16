@@ -19,6 +19,7 @@ Depends: ${misc:Depends},
     regolith-look-default | regolith-look-2,
     xorg,
     xrescat
+Recommends: regolith-ftue
 Suggests:
     update-manager,
     software-properties-gtk
