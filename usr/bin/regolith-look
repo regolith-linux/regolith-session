@@ -29,11 +29,21 @@ refresh() {
     xres_i3_cleanup
 
     # Set the theme from Xresources values.
-    gsettings set org.gnome.desktop.interface gtk-theme "$(xrescat gnome.gtk.theme Adwaita)"
-    gsettings set org.gnome.desktop.interface font-name "$(xrescat i3-wm.font 'Cantarell 11')"
-    gsettings set org.gnome.desktop.wm.preferences theme "$(xrescat gnome.wm.theme Adwaita)"
-    gsettings set org.gnome.desktop.interface icon-theme "$(xrescat gnome.icon.theme Adwaita)"
+    GTK_THEME="$(xrescat gnome.gtk.theme)"
+    if [ -n  "$GTK_THEME" ]; then
+        gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
+    fi
 
+    WM_FONT="$(xrescat i3-wm.font)"
+    if [ -n  "$WM_FONT" ]; then
+        gsettings set org.gnome.desktop.interface font-name "$WM_FONT"
+    fi
+    
+    ICON_THEME="$(xrescat gnome.icon.theme)"
+    if [ -n  "$ICON_THEME" ]; then
+        gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"
+    fi
+    
     # Set the wallpaper
     WALLPAPER_FILE=$(xrescat gnome.wallpaper)
     if [[ -f "$WALLPAPER_FILE" ]]; then

@@ -1,3 +1,10 @@
+regolith-session (0.4.15) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Only set gnome theme properties if defined by xres
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Apr 2022 10:56:38 -0700
+
 regolith-session (0.4.14) focal; urgency=medium
 
   [ Ken Gilmer ]
