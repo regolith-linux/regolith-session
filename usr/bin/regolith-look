@@ -30,6 +30,7 @@ refresh() {
 
     # Set the theme from Xresources values.
     gsettings set org.gnome.desktop.interface gtk-theme "$(xrescat gnome.gtk.theme Adwaita)"
+    gsettings set org.gnome.desktop.interface font-name "$(xrescat i3-wm.font 'Cantarell 11')"
     gsettings set org.gnome.desktop.wm.preferences theme "$(xrescat gnome.wm.theme Adwaita)"
     gsettings set org.gnome.desktop.interface icon-theme "$(xrescat gnome.icon.theme Adwaita)"
 

@@ -1,3 +1,10 @@
+regolith-session (0.4.14) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Set gnome interface font from look during refresh
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Apr 2022 10:46:49 -0700
+
 regolith-session (0.4.13) focal; urgency=medium
 
   [ Ken Gilmer ]
