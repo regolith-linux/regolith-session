@@ -1,3 +1,10 @@
+regolith-session (0.4.13) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * another attempt to call term init script on ftue
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Apr 2022 08:44:52 -0700
+
 regolith-session (0.4.12) focal; urgency=medium
 
   [ Ken Gilmer ]
