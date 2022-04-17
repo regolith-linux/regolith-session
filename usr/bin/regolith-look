@@ -11,7 +11,6 @@ if [ "$#" -lt 1 ]; then
     echo "Actions: "
     echo "    refresh - Update the current session look based on Xresources values"
     echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
-    echo "    stage - Copy Xresource and i3 config files in the user directory"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
     exit 1
 fi
@@ -28,7 +27,7 @@ refresh() {
     # The i3-wm workspace command fails with double quotes in the name
     xres_i3_cleanup
 
-    # Set the theme from Xresources values.
+    # Set GNOME interface options from Xresources values if specifed by Xresources
     GTK_THEME="$(xrescat gnome.gtk.theme)"
     if [ -n  "$GTK_THEME" ]; then
         gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
@@ -86,8 +85,6 @@ set_look() {
 
 if [ "$COMMAND" == "refresh" ]; then
     refresh
-elif [ "$COMMAND" == "stage" ]; then
-    stage
 elif [ "$COMMAND" == "set" ]; then
     LOOK_NAME=$2
     if [ -z "$LOOK_NAME" ]; then

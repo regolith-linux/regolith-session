@@ -1,3 +1,10 @@
+regolith-session (0.4.17) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Remove unimplemented 'stage' command.  Misc cleanup
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Apr 2022 12:07:56 -0700
+
 regolith-session (0.4.16) focal; urgency=medium
 
   [ Ken Gilmer ]
