@@ -1,3 +1,10 @@
+regolith-session (0.4.16) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix font spec from i3 to gnome
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Apr 2022 11:29:35 -0700
+
 regolith-session (0.4.15) focal; urgency=medium
 
   [ Ken Gilmer ]

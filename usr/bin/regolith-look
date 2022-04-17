@@ -36,6 +36,9 @@ refresh() {
 
     WM_FONT="$(xrescat i3-wm.font)"
     if [ -n  "$WM_FONT" ]; then
+        if [[ $WM_FONT == pango:* ]]; then # Remove 'pango:' prefix if exists
+            WM_FONT=$(echo $WM_FONT | cut -d: -f2)
+        fi
         gsettings set org.gnome.desktop.interface font-name "$WM_FONT"
     fi
     
