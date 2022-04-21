@@ -1,3 +1,10 @@
+regolith-session (0.4.18) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Add Xsession file to add user desktop app dir to XDG_DATA_DIR to enable ilia to index desktop files there
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 20 Apr 2022 20:00:50 -0700
+
 regolith-session (0.4.17) focal; urgency=medium
 
   [ Ken Gilmer ]
