@@ -1,3 +1,10 @@
+regolith-session (0.4.19-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Revert "Add Xsession file to add user desktop app dir to XDG_DATA_DIR to enable ilia to index desktop files there"
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 24 Apr 2022 08:46:13 -0700
+
 regolith-session (0.4.18) focal; urgency=medium
 
   [ Ken Gilmer ]
