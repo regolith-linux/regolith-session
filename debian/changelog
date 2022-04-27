@@ -1,3 +1,12 @@
+regolith-session (0.4.20) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * gnome Xresource moves to looks
+  * UI refresh logic moves to looks
+  * Remove unnecessary Xres folder in /usr
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 26 Apr 2022 22:20:03 -0700
+
 regolith-session (0.4.18) focal; urgency=medium
 
   [ Ken Gilmer ]
