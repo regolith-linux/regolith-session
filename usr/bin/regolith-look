@@ -27,41 +27,20 @@ refresh() {
     # The i3-wm workspace command fails with double quotes in the name
     xres_i3_cleanup
 
-    # Set GNOME interface options from Xresources values if specifed by Xresources
-    GTK_THEME="$(xrescat gnome.gtk.theme)"
-    if [ -n  "$GTK_THEME" ]; then
-        gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"
-    fi
+    # Determine if Look loader script is available
+    LOADER_PATH="$(xrescat regolith.look.loader)"
+    if [ -n  "$LOADER_PATH" ]; then
+        # Load the look-specific script that has a function called load_look()
+        source "$LOADER_PATH"
+        # Call look function to update UI
+        echo "Executing look loader script: $LOADER_PATH"
+        load_look
 
-    WM_FONT="$(xrescat i3-wm.font)"
-    if [ -n  "$WM_FONT" ]; then
-        if [[ $WM_FONT == pango:* ]]; then # Remove 'pango:' prefix if exists
-            WM_FONT=$(echo $WM_FONT | cut -d: -f2)
-        fi
-        gsettings set org.gnome.desktop.interface font-name "$WM_FONT"
+        # restart i3-wm after merging Xresources
+        i3-msg -q restart
+    else
+        echo "No look loader script specified, no UI changes"
     fi
-    
-    ICON_THEME="$(xrescat gnome.icon.theme)"
-    if [ -n  "$ICON_THEME" ]; then
-        gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"
-    fi
-    
-    # Set the wallpaper
-    WALLPAPER_FILE=$(xrescat gnome.wallpaper)
-    if [[ -f "$WALLPAPER_FILE" ]]; then
-        gsettings set org.gnome.desktop.background picture-uri "file://$(eval echo $WALLPAPER_FILE)"
-    fi
-
-    # Configure the gnome-terminal profile
-    if hash gnome-terminal 2>/dev/null; then # Check if gnome-terminal is on the path
-        UPDATE_TERM_FLAG=$(xrescat gnome.terminal.update true)
-        if [[ "$UPDATE_TERM_FLAG" == "true" && -f "/usr/share/regolith-ftue/regolith-init-term-profile" ]] ; then
-            /usr/share/regolith-ftue/regolith-init-term-profile
-        fi
-    fi
-
-    # restart i3-wm after merging Xresources
-    i3-msg -q restart
 }
 
 # Upsert Xresource key regolith.look.path and refresh session
