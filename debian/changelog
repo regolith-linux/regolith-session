@@ -1,3 +1,10 @@
+regolith-session (0.4.21-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix regolith look update logic to write to Regolith-specific Xresource file
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 07 May 2022 15:39:45 -0700
+
 regolith-session (0.4.20-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
