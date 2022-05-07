@@ -51,13 +51,13 @@ set_look() {
     fi
 
     # Unset any existing values
-    if [ -f "$BASELINE_XRESOURCE_FILE" ]; then
+    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         # disable existing declaration
-        sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$BASELINE_XRESOURCE_FILE"
+        sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
     # add new declaration
-    echo "regolith.look.path: $LOOK_PATH" >> "$BASELINE_XRESOURCE_FILE"
+    echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
     refresh
 }
