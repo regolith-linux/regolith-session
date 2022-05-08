@@ -1,3 +1,10 @@
+regolith-session (0.4.22-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix broken refresh logic after Xres file change introduced in previous version
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 07 May 2022 21:49:08 -0700
+
 regolith-session (0.4.21-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
