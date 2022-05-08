@@ -1,3 +1,10 @@
+regolith-session (0.4.22) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Fix broken refresh logic after Xres file change introduced in previous version
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 07 May 2022 21:18:23 -0700
+
 regolith-session (0.4.21) focal; urgency=medium
 
   [ Ken Gilmer ]
