@@ -59,6 +59,9 @@ set_look() {
     # add new declaration
     echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
+    # The new look must be loaded into Xresources before refresh occurs
+    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+
     refresh
 }
 
