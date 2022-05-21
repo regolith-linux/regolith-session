@@ -1,3 +1,10 @@
+regolith-session (0.4.23-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Add script to collect diagnostic info for troubleshooting
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 21 May 2022 09:34:43 -0700
+
 regolith-session (0.4.22-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
