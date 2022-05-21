@@ -1,0 +1,49 @@
+#!/bin/bash
+# Prints diagnostic info related to Regolith for troubleshooting purposes
+
+set -Eeu -o pipefail
+
+print_file() {
+  if [ -f "$1" ]; then
+    echo "--- $1:"
+    cat "$1"
+  else
+    echo "--- [$1 does not exist]"
+  fi
+}
+
+echo "--- Regolith Diagnostic - $(date)"
+print_file /etc/regolith/version
+
+echo "--- System Info "
+uname -a
+
+print_file /etc/lsb-release
+
+echo "--- Xresources"
+print_file "$HOME/.Xresources"
+print_file "$HOME/.config/regolith2/Xresources"
+print_file "$HOME/.cache/regolith2/Xresources-generated"
+
+xrdb -query
+
+echo "--- i3"
+i3 --moreversion
+print_file "/etc/regolith/i3/config"
+ls -l /usr/share/regolith/i3/config.d/
+
+if [ -d "/usr/share/i3xrocks" ]; then
+  echo "--- i3xrocks config"
+  find /usr/share/i3xrocks
+else
+  echo "--- [/usr/share/i3xrocks does not exist]"
+fi
+
+echo "--- dconf"
+gsettings list-recursively org.gnome.desktop.interface
+gsettings list-recursively org.gnome.desktop.background
+gsettings list-recursively org.gnome.gnome-flashback
+gsettings list-recursively org.regolith-linux.ilia
+gsettings list-recursively org.gnome.desktop.wm.keybindings
+gsettings list-recursively org.gnome.settings-daemon.plugins.media-keys
+gsettings list-recursively org.gnome.desktop.wm.preferences
