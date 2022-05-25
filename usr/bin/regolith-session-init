@@ -8,8 +8,7 @@ source /usr/lib/regolith/regolith-session-common.sh
 # --------- Script Main -----------
 
 load_standard_xres  # ~/.Xresources
-load_regolith_xres  # ~/.cache/regolith/Xresources
-load_standard_xres  # Re-apply any overrides
+load_regolith_xres  # ~/.config/regolith2/Xresources
 
 # following function is causing script to silently exit
 # xres_i3_cleanup
@@ -21,7 +20,7 @@ if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
 fi
 
 resolve_default_config_file
-echo "Regolith is launching i3-gaps with $I3_CONFIG_FILE"
+echo "Regolith is launching i3 with $I3_CONFIG_FILE"
 i3 -c "$I3_CONFIG_FILE"
 
 # Run user's post logout script if script. Post logout means that the X session is closed at this point.
