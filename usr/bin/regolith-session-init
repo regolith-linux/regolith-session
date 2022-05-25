@@ -10,9 +10,6 @@ source /usr/lib/regolith/regolith-session-common.sh
 load_standard_xres  # ~/.Xresources
 load_regolith_xres  # ~/.config/regolith2/Xresources
 
-# following function is causing script to silently exit
-# xres_i3_cleanup
-
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 # See https://zork.net/~st/jottings/gnome-i3.html for details
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
