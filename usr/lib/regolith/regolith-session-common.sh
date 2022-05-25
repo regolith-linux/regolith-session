@@ -40,30 +40,20 @@ load_standard_xres() {
 # Change the quotes in workspace names from double to to single.
 # Due to a limitation of the preprocessor they have double quotes.
 # The i3-wm workspace command fails with double quotes in the name
+# NOTE: Calling this function in Regolith 2 desktop sessio was removed due to silent failures
 xres_i3_cleanup() {   
     xrdb -query |grep i3-wm.workspace.|sed "s/\"/'/g"|xrdb -merge
 }
 
-# Generate a Xresource file from merging the following into ~/.config/regolith2/Xresources-generated:
-# 1. /usr/share/regolith-look/default/root or override defined in ~/.Xresources
-# 2. ~/.config/regolith2/Xresources
+# 1. Load the Regolith Xresource override file if exists
+# 2. Load Regolith Look Xresource as defined in override or use default
 load_regolith_xres() {    
-    GENERATED_XRES_DIR="$HOME/.cache/regolith2"
-    GENERATED_XRES_FILE="$GENERATED_XRES_DIR/Xresources-generated"
-    if [ ! -d "$GENERATED_XRES_DIR" ]; then
-        mkdir -p "$GENERATED_XRES_DIR"
+    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        xrdb -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
     
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
     LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
-    echo "!+ Merged $LOOK_STYLE_ROOT_FILE from ($(date))" > "$GENERATED_XRES_FILE"
-    cat "$LOOK_STYLE_ROOT_FILE" >> "$GENERATED_XRES_FILE"
-
-    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        printf "\n!+ Merged from %s at (%s)\n" "$USER_XRESOURCE_OVERRIDE_FILE" "$(date)" >> "$GENERATED_XRES_FILE"
-        cat "$USER_XRESOURCE_OVERRIDE_FILE" >> "$GENERATED_XRES_FILE"
-    fi
-
-    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$GENERATED_XRES_FILE"
+    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
 }
