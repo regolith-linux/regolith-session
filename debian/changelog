@@ -1,3 +1,11 @@
+regolith-session (0.4.24-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Revert strategy that creates merged Xresource. Simplify by just loading one override or using default look. Looks become top-down definitions of UI, and bottom up extension model deprecated.
+  * Cleanup
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 25 May 2022 20:19:10 -0700
+
 regolith-session (0.4.23-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
