@@ -1,3 +1,10 @@
+regolith-session (0.4.25) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Re-apply user Xres after look is applied. Resolves https://github.com/regolith-linux/regolith-desktop/issues/644
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 29 May 2022 08:19:33 -0700
+
 regolith-session (0.4.24) focal; urgency=medium
 
   [ Ken Gilmer ]
