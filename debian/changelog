@@ -1,3 +1,10 @@
+regolith-session (0.4.25-bullseye) bullseye; urgency=medium
+
+  [ Ken Gilmer ]
+  * Re-apply user Xres after look is applied. Resolves https://github.com/regolith-linux/regolith-desktop/issues/644
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 29 May 2022 08:23:48 -0700
+
 regolith-session (0.4.24-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
