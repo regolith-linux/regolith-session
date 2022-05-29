@@ -47,6 +47,7 @@ xres_i3_cleanup() {
 
 # 1. Load the Regolith Xresource override file if exists
 # 2. Load Regolith Look Xresource as defined in override or use default
+# 3. Re-merge Regolith Xresource override file if exists
 load_regolith_xres() {    
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         xrdb -merge "$USER_XRESOURCE_OVERRIDE_FILE"
@@ -55,5 +56,11 @@ load_regolith_xres() {
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
     LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
-    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
+    if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
+    fi    
+    
+    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+    fi
 }
