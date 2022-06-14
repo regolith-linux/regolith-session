@@ -1,4 +1,6 @@
-# Add user's directory to XDG_DATA_DIRS
+# Add user's directory to XDG_DATA_DIRS if it does not already exist
 
-XDG_DATA_DIRS="$XDG_DATA_DIRS":$HOME/.local/share
-export XDG_DATA_DIRS
+if [[ ":$XDG_DATA_DIRS:" != *":$HOME/.local/share:"* ]]; then
+  XDG_DATA_DIRS="$XDG_DATA_DIRS":$HOME/.local/share
+  export XDG_DATA_DIRS
+fi
