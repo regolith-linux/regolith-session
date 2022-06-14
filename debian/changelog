@@ -1,3 +1,10 @@
+regolith-session (0.4.26) focal; urgency=medium
+
+  [ Erick Fuentes ]
+  * Check if user's directory does not exist before appending
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 14 Jun 2022 07:03:38 -0700
+
 regolith-session (0.4.25) focal; urgency=medium
 
   [ Ken Gilmer ]
