@@ -1,3 +1,10 @@
+regolith-session (0.5.0) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Add ability to stage looks in user directory ~/.config/regolith2/looks
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 17 Jun 2022 04:47:10 -0700
+
 regolith-session (0.4.26) focal; urgency=medium
 
   [ Erick Fuentes ]
