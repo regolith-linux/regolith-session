@@ -73,11 +73,25 @@ elif [ "$COMMAND" == "set" ]; then
         echo "Must specify a look to set."
         exit 1
     else
-        LOOK_PATH="/usr/share/regolith-look/$LOOK_NAME"
-        set_look
+        LOOK_PATH="$DEFAULT_LOOK_ROOT/$LOOK_NAME"
+
+        if [ -d "$LOOK_PATH" ]; then
+            set_look
+        else
+            LOOK_PATH="$USER_LOOK_ROOT/$LOOK_NAME"
+            if [ -d "$LOOK_PATH" ]; then
+                set_look
+            else
+                echo "Unable to find look $LOOK_NAME in $DEFAULT_LOOK_PATH or $USER_LOOK_PATH"
+            fi
+        fi
     fi
 elif [ "$COMMAND" == "list" ]; then
-    find "$DEFAULT_LOOK_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
+    if [ -d "$USER_LOOK_ROOT" ]; then
+        find {"$DEFAULT_LOOK_ROOT","$USER_LOOK_ROOT"} -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
+    else
+        find "$DEFAULT_LOOK_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
+    fi
 else
     echo "Unrecognized command: $COMMAND"
     exit 1
