@@ -52,6 +52,9 @@ set_look() {
 
     # Unset any existing values
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+	# remove existing declaration comments
+        sed -i '/^!regolith.look.path/d' "$USER_XRESOURCE_OVERRIDE_FILE"
+
         # disable existing declaration
         sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
