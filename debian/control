@@ -30,3 +30,14 @@ Description: Regolith customized gnome-flashback session
  This package contains the desktop and xsession configuration
  necessary to start a Regolith gnome-flashback / i3 desktop session.
  It is based on https://github.com/deuill/i3-gnome-flashback.
+
+Package: regolith-session-sway
+Architecture: any
+Depends: ${misc:Depends},
+    dbus # add more dependencies here
+Provides: regolith-desktop-session
+Conflicts: regolith-desktop-session, session-shortcuts, regolith-styles
+Replaces: regolith-desktop-session
+Description: Regolith customized SwayWM session
+ This package contains the desktop and xsession configuration
+ necessary to start a Regolith sway session.
