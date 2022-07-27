@@ -5,28 +5,47 @@ set -Eeu -o pipefail
 
 source /usr/lib/regolith/regolith-session-common.sh
 
+start_i3 () {
+    load_standard_xres  # ~/.Xresources
+    load_regolith_xres  # ~/.config/regolith2/Xresources
+
+    # Register with gnome-session so that it does not kill the whole session thinking it is dead.
+    # See https://zork.net/~st/jottings/gnome-i3.html for details
+    if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
+        dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
+    fi
+
+    echo "Regolith is launching i3 with $I3_CONFIG_FILE"
+    i3 -c "$I3_CONFIG_FILE"
+
+    # Run user's post logout script if script. Post logout means that the X session is closed at this point.
+    if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
+        echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
+        timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
+    fi
+
+    # Close session when i3 exits.
+    if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
+        dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.Logout "uint32:1"
+    fi
+}
+
+start_sway () {
+    load_standard_trawlres
+    load_regolith_trawlres
+
+    echo "Regolith is launching sway with $I3_CONFIG_FILE"
+    sway -c "$SWAY_CONFIG_FILE"
+}
+
 # --------- Script Main -----------
-
-load_standard_xres  # ~/.Xresources
-load_regolith_xres  # ~/.config/regolith2/Xresources
-
-# Register with gnome-session so that it does not kill the whole session thinking it is dead.
-# See https://zork.net/~st/jottings/gnome-i3.html for details
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
-fi
-
 resolve_default_config_file
-echo "Regolith is launching i3 with $I3_CONFIG_FILE"
-i3 -c "$I3_CONFIG_FILE"
+export MOZ_ENABLE_WAYLAND=1
+export STUDIO_JDK=/usr/lib/jvm/java-11-openjdk/
 
-# Run user's post logout script if script. Post logout means that the X session is closed at this point.
-if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
-    echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
-	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
-fi
-
-# Close session when i3 exits.
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.Logout "uint32:1"
+if [[ "${1-DEFAULT_SESSION_TYPE}" == "sway" ]]; then
+    # set environment variabbles 
+    start_sway
+else
+    start_i3
 fi

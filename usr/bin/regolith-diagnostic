@@ -47,3 +47,6 @@ gsettings list-recursively org.regolith-linux.ilia
 gsettings list-recursively org.gnome.desktop.wm.keybindings
 gsettings list-recursively org.gnome.settings-daemon.plugins.media-keys
 gsettings list-recursively org.gnome.desktop.wm.preferences
+
+echo "--- trawl"
+trawl -q
