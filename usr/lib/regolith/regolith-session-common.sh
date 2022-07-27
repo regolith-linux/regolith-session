@@ -88,16 +88,16 @@ load_regolith_xres() {
 # NOTE: Will load sway specific reource files
 load_regolith_trawlres() {
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        trawldb --merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        trawldb --merge "$USER_XRESOURCE_OVERRIDE_FILE" 
     fi
 
     LOOK_STYLE_ROOT_PATH=$(trawlcat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
     LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
     if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
-        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE"
+        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE" 
     fi
-
+    
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi

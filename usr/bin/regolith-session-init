@@ -33,8 +33,8 @@ start_i3 () {
 start_sway () {
     load_standard_trawlres
     load_regolith_trawlres
-
-    echo "Regolith is launching sway with $I3_CONFIG_FILE"
+    
+    echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
     sway -c "$SWAY_CONFIG_FILE"
 }
 
