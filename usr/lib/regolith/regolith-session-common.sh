@@ -35,10 +35,11 @@ resolve_default_config_file() {
         I3_CONFIG_FILE="$DEFAULT_SYS_I3_CONFIG_FILE"
     fi
     
-    if [ -f "$DEFAULT_USER_I3_CONFIG_FILE" ]; then
-        SWAY_CONFIG_FILE="$DEFAULT_USER_I3_CONFIG_FILE"
+    # To be changed with sway config locations
+    if [ -f "$DEFAULT_USER_SWAY_CONFIG_FILE" ]; then
+        SWAY_CONFIG_FILE="$DEFAULT_USER_SWAY_CONFIG_FILE"
     else
-        SWAY_CONFIG_FILE="$DEFAULT_SYS_I3_CONFIG_FILE"
+        SWAY_CONFIG_FILE="$DEFAULT_SYS_SWAY_CONFIG_FILE"
     fi
 }
 
