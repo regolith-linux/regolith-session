@@ -17,10 +17,24 @@ fi
 
 COMMAND=$1
 
+RESOURCE_GETTER="xrescat"
+WM_RELOAD="i3-msg -q restart"
+
+if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+    RESOURCE_GETTER="trawlcat"
+    WM_RELOAD="swaymsg reload"
+fi
+
 refresh() {
-    load_standard_xres # Load first to allow override of default look
-    load_regolith_xres # Find all Xresource partials and merge them
-    load_standard_xres # Re-apply any values that may have been overwritten
+    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+        load_standard_trawlres
+        load_regolith_trawlres
+        load_regolith_trawlres
+    else
+        load_standard_xres # Load first to allow override of default look
+        load_regolith_xres # Find all Xresource partials and merge them
+        load_standard_xres # Re-apply any values that may have been overwritten
+    fi
 
     # Change the quotes in workspace names from double to to single.
     # Due to a limitation of the preprocessor they have double quotes.
@@ -28,7 +42,7 @@ refresh() {
     xres_i3_cleanup
 
     # Determine if Look loader script is available
-    LOADER_PATH="$(xrescat regolith.look.loader)"
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
     if [ -n  "$LOADER_PATH" ]; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
@@ -36,8 +50,8 @@ refresh() {
         echo "Executing look loader script: $LOADER_PATH"
         load_look
 
-        # restart i3-wm after merging Xresources
-        i3-msg -q restart
+        # restart window manager after merging Xresources
+        $WM_RELOAD
     else
         echo "No look loader script specified, no UI changes"
     fi
@@ -62,9 +76,13 @@ set_look() {
     # add new declaration
     echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
+    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+        echo "setting for wayland"
+        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
+    else
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+    fi
     # The new look must be loaded into Xresources before refresh occurs
-    xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
-
     refresh
 }
 
