@@ -1,0 +1,4 @@
+usr/bin/regolith-session-init
+usr/bin/regolith-diagnostic
+usr/lib/regolith/regolith-session-common.sh
+usr/share/wayland-sessions
