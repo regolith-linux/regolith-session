@@ -9,7 +9,7 @@ source /usr/lib/regolith/regolith-session-common.sh
 resolve_default_config_file
 
 # Preloads user environment variables
-USER_ENVIRONMENT=$(trawlcat sway.preload_env $HOME/.config/regolith2/sway/environment)
+USER_ENVIRONMENT=${trawlcat sway.preload_env $HOME/.config/regolith2/sway/environment}
 set -a
 if [ -f "$USER_ENVIRONMENT" ]; then
     source $USER_ENVIRONMENT
@@ -22,7 +22,7 @@ load_regolith_trawlres
 echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
 sway -c "$SWAY_CONFIG_FILE"
 
-# Run user's post logout script if script. Post logout means that the X session is closed at this point.
+# Run user's post logout script if script. Post logout means that the wayland session has been terminated.
 if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
     echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
 	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"

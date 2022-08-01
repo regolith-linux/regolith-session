@@ -72,7 +72,7 @@ xres_i3_cleanup() {
 }
 
 trawl_sway_cleanup() {
-    trawldb --query i3-wm.workspace.|sed "s/\"/'/g" >> $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
+    trawldb --query i3-wm.workspace.|sed "s/\"/'/g" > $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
     trawldb --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
 }
 
