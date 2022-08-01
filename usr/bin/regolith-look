@@ -17,32 +17,38 @@ fi
 
 COMMAND=$1
 
-RESOURCE_GETTER="xrescat"
 WM_RELOAD="i3-msg -q restart"
 
-if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
-    RESOURCE_GETTER="trawlcat"
-    WM_RELOAD="swaymsg reload"
-fi
+load_sway_resources() {
+    load_standard_trawlres
+    load_regolith_trawlres
+    load_regolith_trawlres
+    trawl_sway_cleanup
+}
 
-refresh() {
-    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
-        load_standard_trawlres
-        load_regolith_trawlres
-        load_regolith_trawlres
-    else
-        load_standard_xres # Load first to allow override of default look
-        load_regolith_xres # Find all Xresource partials and merge them
-        load_standard_xres # Re-apply any values that may have been overwritten
-    fi
+load_i3_resources() {
+    load_standard_xres # Load first to allow override of default look
+    load_regolith_xres # Find all Xresource partials and merge them
+    load_standard_xres # Re-apply any values that may have been overwritten
 
     # Change the quotes in workspace names from double to to single.
     # Due to a limitation of the preprocessor they have double quotes.
     # The i3-wm workspace command fails with double quotes in the name
     xres_i3_cleanup
+}
+
+refresh() {
+    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+	WM_RELOAD="swaymsg reload"
+	load_sway_resources
+    else
+	load_i3_resoureces
+    fi
+
 
     # Determine if Look loader script is available
     LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
+    echo "Loader Path: $LOADER_PATH"
     if [ -n  "$LOADER_PATH" ]; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"

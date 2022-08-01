@@ -26,6 +26,12 @@ USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith2/logout"
 
 DEFAULT_SESSION_TYPE="i3"
 
+# Set the default resource getter
+RESOURCE_GETTER="xrescat"
+if [ $XDG_SESSION_TYPE == "wayland" ]; then
+	RESOURCE_GETTER="trawlcat"
+fi
+
 # Determine where the default i3 and sway config files are
 # Sets I3_CONFIG_FILE and SWAY_CONFIG_FILE
 resolve_default_config_file() {
@@ -63,6 +69,11 @@ load_standard_trawlres() {
 # NOTE: Calling this function in Regolith 2 desktop sessio was removed due to silent failures
 xres_i3_cleanup() {
     xrdb -query |grep i3-wm.workspace.|sed "s/\"/'/g"|xrdb -merge
+}
+
+trawl_sway_cleanup() {
+    trawldb --query i3-wm.workspace.|sed "s/\"/'/g" >> $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
+    trawldb --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
 }
 
 # 1. Load the Regolith Xresource override file if exists
