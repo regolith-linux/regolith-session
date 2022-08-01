@@ -1,4 +1,5 @@
-usr/bin/regolith-session-init
+usr/bin/regolith-session-sway
 usr/bin/regolith-diagnostic
 usr/lib/regolith/regolith-session-common.sh
 usr/share/wayland-sessions
+etc/regolith/sway
