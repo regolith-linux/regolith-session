@@ -34,15 +34,12 @@ Description: Regolith customized gnome-flashback session
 Package: regolith-session-sway
 Architecture: any
 Depends: ${misc:Depends},
-    dbus # add more dependencies here,
+    dbus,
     sway,
     swayidle,
     xwayland,
     clipman,
-    wl-clipboard,
-    #trawld,
-    #trawldb,
-    #trawlcat
+    wl-clipboard
 Provides: regolith-desktop-session
 Conflicts: regolith-desktop-session, session-shortcuts, regolith-styles
 Replaces: regolith-desktop-session
