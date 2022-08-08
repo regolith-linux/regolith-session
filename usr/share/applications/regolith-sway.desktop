@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=regolith-sway
+Comment=Productivity-focused desktop environment, Regolith
+Exec=regolith-session-sway
+X-GNOME-WMName=Regolith
+X-GNOME-Autostart-Phase=WindowManager
+X-GNOME-Provides=windowmanager
+X-GNOME-Autostart-Notify=false
