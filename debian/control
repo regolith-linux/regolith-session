@@ -24,8 +24,7 @@ Suggests:
     update-manager,
     software-properties-gtk
 Provides: regolith-desktop-session
-Conflicts: regolith-desktop-session, session-shortcuts, regolith-styles
-Replaces: regolith-desktop-session
+Conflicts: session-shortcuts
 Description: Regolith customized gnome-flashback session
  This package contains the desktop and xsession configuration
  necessary to start a Regolith gnome-flashback / i3 desktop session.
@@ -44,8 +43,7 @@ Depends: ${misc:Depends},
     wl-clipboard,
     xwayland
 Provides: regolith-desktop-session
-Conflicts: regolith-desktop-session, session-shortcuts, regolith-styles
-Replaces: regolith-desktop-session
+Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
  This package contains the desktop and xsession configuration
  necessary to start a Regolith sway session.
