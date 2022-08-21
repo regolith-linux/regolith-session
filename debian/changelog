@@ -1,3 +1,9 @@
+regolith-session (0.6.2-3) focal; urgency=medium
+
+  * Fix typo in install file
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 16:53:40 -0700
+
 regolith-session (0.6.2-2) focal; urgency=medium
 
   * Allow X11 and wayland sessions to be installed together
