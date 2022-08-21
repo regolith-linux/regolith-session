@@ -1,3 +1,10 @@
+regolith-session (0.6.0-bullseye) bullseye; urgency=medium
+
+  [ Jonny Bylsma ]
+  * Add Xsession.d file for customizing X environment, setting XDG_DATA_DIR
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 09:35:41 -0700
+
 regolith-session (0.5.0-bullseye) bullseye; urgency=medium
 
   [ Ken Gilmer ]
