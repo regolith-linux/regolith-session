@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Regolith
+Name=Regolith on X11
 Comment=Productivity focused desktop environment
 Exec=/usr/bin/regolith-session
 TryExec=/usr/bin/regolith-session
