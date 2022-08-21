@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Regolith (Sway)
+Comment=Productivity focused desktop environment
+Exec=/usr/bin/gnome-session --builtin --session=regolith-sway
+Type=Application
