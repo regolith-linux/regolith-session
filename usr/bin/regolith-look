@@ -39,12 +39,11 @@ load_i3_resources() {
 
 refresh() {
     if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
-	WM_RELOAD="swaymsg reload"
-	load_sway_resources
+        WM_RELOAD="swaymsg reload"
+        load_sway_resources
     else
-	load_i3_resoureces
+	    load_i3_resources
     fi
-
 
     # Determine if Look loader script is available
     LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
