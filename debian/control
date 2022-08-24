@@ -35,7 +35,7 @@ Architecture: any
 Depends: ${misc:Depends},
     clipman,
     dbus,
-    sway,
+    sway-regolith,
     swayidle,
     trawlcat,
     trawld,
