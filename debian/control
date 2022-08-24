@@ -40,8 +40,10 @@ Depends: ${misc:Depends},
     trawlcat,
     trawld,
     trawldb,
+    gnome-session-bin,
     wl-clipboard,
-    xwayland
+    regolith-look-default
+    xwayland,
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
