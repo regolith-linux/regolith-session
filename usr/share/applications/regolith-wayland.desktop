@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=regolith-sway
+Name=regolith-wayland
 Comment=Productivity-focused desktop environment, Regolith
-Exec=regolith-session-sway
+Exec=regolith-session-wayland
 X-GNOME-WMName=Regolith
 X-GNOME-Autostart-Phase=WindowManager
 X-GNOME-Provides=windowmanager
