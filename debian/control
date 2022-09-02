@@ -42,7 +42,7 @@ Depends: ${misc:Depends},
     trawldb,
     gnome-session-bin,
     wl-clipboard,
-    regolith-look-default
+    regolith-look-default-loader
     xwayland,
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
