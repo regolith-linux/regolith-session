@@ -1,4 +1,4 @@
-usr/bin/regolith-session-sway
+usr/bin/regolith-session-wayland
 usr/bin/regolith-diagnostic
 usr/lib/regolith/regolith-session-common.sh
 usr/share/wayland-sessions

@@ -35,15 +35,15 @@ Architecture: any
 Depends: ${misc:Depends},
     clipman,
     dbus,
+    gnome-session-bin,
+    regolith-look-default-loader,
     sway-regolith,
     swayidle,
     trawlcat,
     trawld,
     trawldb,
-    gnome-session-bin,
     wl-clipboard,
-    regolith-look-default-loader
-    xwayland,
+    xwayland
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
