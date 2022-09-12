@@ -9,6 +9,7 @@ resolve_default_config_file
 
 load_standard_trawlres
 load_regolith_trawlres
+trawl_sway_cleanup
 
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
