@@ -15,6 +15,7 @@ Depends: ${misc:Depends},
     gnome-session-bin,
     mutter-common,
     regolith-i3-config,
+    regolith-session-common,
     x11-xserver-utils,
     regolith-look-default | regolith-look-2,
     xorg,
@@ -36,6 +37,7 @@ Depends: ${misc:Depends},
     clipman,
     dbus,
     gnome-session-bin,
+    regolith-session-common,
     regolith-look-default-loader,
     sway-regolith,
     swayidle,
@@ -44,8 +46,15 @@ Depends: ${misc:Depends},
     trawldb,
     wl-clipboard,
     xwayland
-Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
- This package contains the desktop and xsession configuration
+ This package contains the desktop and wayland session configuration
  necessary to start a Regolith sway session.
+
+Package: regolith-session-common
+Architecture: any
+Depends: ${misc:Depends},
+    regolith-resource-loader
+Conflicts: session-shortcuts
+Description: Regolith customized SwayWM session
+ This package contains common scripts required by regolith-session variants.
