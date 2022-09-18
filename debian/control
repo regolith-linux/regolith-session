@@ -46,6 +46,7 @@ Depends: ${misc:Depends},
     trawldb,
     wl-clipboard,
     xwayland
+Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
  This package contains the desktop and wayland session configuration
