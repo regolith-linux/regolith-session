@@ -56,6 +56,6 @@ Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
-Conflicts: session-shortcuts
+Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4-1regolith)
 Description: Regolith customized SwayWM session
  This package contains common scripts required by regolith-session variants.
