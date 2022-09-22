@@ -1,3 +1,9 @@
+regolith-session (0.6.6) focal; urgency=medium
+
+  * Add conflicts for earlier package version due to file ownership change in previous version
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 22 Sep 2022 07:44:38 -0700
+
 regolith-session (0.6.5) focal; urgency=medium
 
   [ Regolith Linux ]
