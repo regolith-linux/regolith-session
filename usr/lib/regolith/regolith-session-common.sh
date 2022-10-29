@@ -51,7 +51,7 @@ xres_i3_cleanup() {
 # 3. Re-merge Regolith Xresource override file if exists
 load_regolith_xres() {
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        xrdb -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
