@@ -1,3 +1,9 @@
+regolith-session (0.6.3) focal; urgency=medium
+
+  * Revert changes to Xsession. Due to field variance ilia will manage app path list external to XDG_DATA_DIRS
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 29 Oct 2022 19:13:32 -0700
+
 regolith-session (0.6.2) focal; urgency=medium
 
   * Consistently specify search path for xres loading.
