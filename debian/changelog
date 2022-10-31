@@ -1,3 +1,9 @@
+regolith-session (0.6.4) focal; urgency=medium
+
+  * Move default ui packages from default look to flashback session since default doesn't need to be installed
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 30 Oct 2022 20:34:57 -0700
+
 regolith-session (0.6.3) focal; urgency=medium
 
   * Revert changes to Xsession. Due to field variance ilia will manage app path list external to XDG_DATA_DIRS
