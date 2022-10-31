@@ -19,7 +19,21 @@ Depends: ${misc:Depends},
     regolith-look-default | regolith-look-2,
     xorg,
     xrescat
-Recommends: regolith-ftue
+Recommends:
+  i3-next-workspace,
+  i3xrocks-cpu-usage,
+  i3xrocks-net-traffic,
+  i3xrocks-time,
+  regolith-ftue,
+  regolith-i3-compositor,
+  regolith-i3-ftue,
+  regolith-i3-gaps-partial,
+  regolith-i3-gnome,
+  regolith-i3-i3xrocks,
+  regolith-i3-ilia,
+  regolith-i3-rofication-ilia,
+  regolith-i3-swap-focus,
+  regolith-i3xrocks-config
 Suggests:
     update-manager,
     software-properties-gtk
