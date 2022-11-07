@@ -28,7 +28,7 @@ Recommends:
   regolith-i3-compositor,
   regolith-i3-ftue,
   regolith-i3-gaps-partial,
-  regolith-i3-gnome,
+  regolith-i3-control-center-regolith | regolith-i3-control-center,
   regolith-i3-i3xrocks,
   regolith-i3-ilia,
   regolith-i3-rofication-ilia,
