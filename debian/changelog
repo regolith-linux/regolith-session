@@ -1,3 +1,9 @@
+regolith-session (0.6.5) focal; urgency=medium
+
+  * Depend on virtualized config ui package
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 07 Nov 2022 05:09:59 -0800
+
 regolith-session (0.6.4) focal; urgency=medium
 
   * Move default ui packages from default look to flashback session since default doesn't need to be installed
