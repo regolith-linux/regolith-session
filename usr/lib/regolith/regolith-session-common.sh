@@ -35,7 +35,7 @@ fi
 # Determine where the default i3 and sway config files are
 # Sets I3_CONFIG_FILE and SWAY_CONFIG_FILE
 resolve_default_config_file() {
-    if [ -f "$DEFAULT_USER_I3_CONFIG_FILE" ]; then
+    if [ -e "$DEFAULT_USER_I3_CONFIG_FILE" ]; then
         I3_CONFIG_FILE="$DEFAULT_USER_I3_CONFIG_FILE"
     else
         I3_CONFIG_FILE="$DEFAULT_SYS_I3_CONFIG_FILE"
@@ -51,7 +51,7 @@ resolve_default_config_file() {
 
 # Load default Xresources
 load_standard_xres() {
-    if [ -f "$BASELINE_XRESOURCE_FILE" ]; then
+    if [ -e "$BASELINE_XRESOURCE_FILE" ]; then
         xrdb -merge "$BASELINE_XRESOURCE_FILE"
     fi
 }
@@ -80,18 +80,18 @@ trawl_sway_cleanup() {
 # 2. Load Regolith Look Xresource as defined in override or use default
 # 3. Re-merge Regolith Xresource override file if exists
 load_regolith_xres() {
-    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        xrdb -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+    if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
     LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
 
-    if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
+    if [ -e "$LOOK_STYLE_ROOT_FILE" ]; then
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
     fi
 
-    if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+    if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 }

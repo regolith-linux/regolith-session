@@ -1,61 +1,32 @@
-regolith-session (0.6.6) focal; urgency=medium
-
-  * Add conflicts for earlier package version due to file ownership change in previous version
-
- -- Regolith Linux <regolith.linux@gmail.com>  Thu, 22 Sep 2022 07:44:38 -0700
-
 regolith-session (0.6.5) focal; urgency=medium
 
-  [ Regolith Linux ]
-  * Fix reference to wayland script, fix control
+  * Depend on virtualized config ui package
 
-  [ Soumya Ranjan Patnaik ]
-  * Packaging changes
-  * Added regolith-session-common package
-
-  [ Regolith Linux ]
-  * Reapply virtual package spec to regolith-session-sway
-
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 18 Sep 2022 12:58:01 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 07 Nov 2022 05:09:59 -0800
 
 regolith-session (0.6.4) focal; urgency=medium
 
-  [ Soumya Ranjan Patnaik ]
-  * Renamed sway to sway-regolith and updated the session name to regolith-wayland
-  * Added gnome and regolith-look dependencies
-  * Update control
+  * Move default ui packages from default look to flashback session since default doesn't need to be installed
 
- -- Regolith Linux <regolith.linux@gmail.com>  Fri, 02 Sep 2022 15:11:26 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 30 Oct 2022 20:34:57 -0700
 
 regolith-session (0.6.3) focal; urgency=medium
 
-  * Fix typo in regolith-look script
+  * Revert changes to Xsession. Due to field variance ilia will manage app path list external to XDG_DATA_DIRS
 
- -- Regolith Linux <regolith.linux@gmail.com>  Mon, 22 Aug 2022 21:21:44 -0700
-
-regolith-session (0.6.2-3) focal; urgency=medium
-
-  * Fix typo in install file
-
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 16:53:40 -0700
-
-regolith-session (0.6.2-2) focal; urgency=medium
-
-  * Allow X11 and wayland sessions to be installed together
-
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 15:50:36 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 29 Oct 2022 19:13:32 -0700
 
 regolith-session (0.6.2) focal; urgency=medium
 
-  * Depend on trawl components for sway session
+  * Consistently specify search path for xres loading.
 
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 13:16:53 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 29 Oct 2022 16:24:02 -0700
 
 regolith-session (0.6.1) focal; urgency=medium
 
-  * Use more general name for sessions
+  * File checks allow symlinks
 
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 12:39:10 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 23 Oct 2022 08:55:37 -0700
 
 regolith-session (0.6.0) focal; urgency=medium
 
@@ -65,7 +36,7 @@ regolith-session (0.6.0) focal; urgency=medium
   [ Jonny Bylsma ]
   * Add Xsession.d file for customizing X environment, setting XDG_DATA_DIR
 
- -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 12:30:13 -0700
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Aug 2022 09:42:24 -0700
 
 regolith-session (0.5.0) focal; urgency=medium
 

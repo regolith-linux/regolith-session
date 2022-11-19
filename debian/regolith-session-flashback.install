@@ -3,4 +3,4 @@ usr/share/xsessions
 usr/share/applications/regolith.desktop
 usr/bin/regolith-session
 usr/bin/regolith-session-init
-etc/X11/Xsession.d
+usr/lib/regolith
