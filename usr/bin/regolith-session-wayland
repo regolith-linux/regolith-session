@@ -19,8 +19,15 @@ if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
     dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
 fi
 
+unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
+
 echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
-sway-regolith -c "$SWAY_CONFIG_FILE"
+
+if [[ unsupported_gpu ]]; then
+    sway-regolith -c "$SWAY_CONFIG_FILE" --unsupported_gpu
+else
+    sway-regolith -c "$SWAY_CONFIG_FILE" 
+fi
 
 # Run user's post logout script if script. Post logout means that the wayland session has been terminated.
 if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
