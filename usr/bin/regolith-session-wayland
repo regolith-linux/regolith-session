@@ -23,8 +23,8 @@ unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 
 echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
 
-if [[ unsupported_gpu ]]; then
-    sway-regolith -c "$SWAY_CONFIG_FILE" --unsupported_gpu
+if [[ "$unsupported_gpu" == "true" ]]; then
+    sway-regolith -c "$SWAY_CONFIG_FILE" --unsupported-gpu
 else
     sway-regolith -c "$SWAY_CONFIG_FILE" 
 fi
