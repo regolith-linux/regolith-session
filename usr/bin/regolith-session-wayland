@@ -19,8 +19,14 @@ if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
     dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
 fi
 
-unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 
+# Import environment variables from environment.d
+while read -r l; do
+    eval export $l
+done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+
+# Start sway-regolith
+unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
 
 if [[ "$unsupported_gpu" == "true" ]]; then
