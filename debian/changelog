@@ -1,3 +1,9 @@
+regolith-session (0.7.0) focal; urgency=medium
+
+  * Added wayland session
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Thu, 15 Dec 2022 01:34:30 +0530
+
 regolith-session (0.6.5) focal; urgency=medium
 
   * Depend on virtualized config ui package
