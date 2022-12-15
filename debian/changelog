@@ -1,3 +1,9 @@
+regolith-session (0.7.0ubuntu1) UNRELEASED; urgency=medium
+
+  * Updated depends for regolith-session-sway
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Thu, 15 Dec 2022 10:32:51 +0530
+
 regolith-session (0.7.0) focal; urgency=medium
 
   * Added wayland session
