@@ -1,8 +1,10 @@
 regolith-session (0.7.0ubuntu1) UNRELEASED; urgency=medium
 
   * Updated depends for regolith-session-sway
+  * Add regolith-sway-config as dependency
+  * Remove RfKill from required components
 
- -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Thu, 15 Dec 2022 10:32:51 +0530
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Thu, 15 Dec 2022 18:35:37 +0530
 
 regolith-session (0.7.0) focal; urgency=medium
 
