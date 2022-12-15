@@ -58,6 +58,8 @@ Depends: ${misc:Depends},
     trawlcat,
     trawld,
     trawldb,
+    regolith-displayd,
+    regolith-inputd,
     wl-clipboard,
     xwayland
 Provides: regolith-desktop-session
