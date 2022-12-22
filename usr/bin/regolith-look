@@ -41,6 +41,7 @@ refresh() {
     if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
         WM_RELOAD="swaymsg reload"
         load_sway_resources
+        swaymsg -t send_tick '{"status": "reload_pending"}'
     else
 	    load_i3_resources
     fi
