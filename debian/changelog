@@ -1,3 +1,10 @@
+regolith-session (0.7.2) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Update package metadata, attempt fix of regolith-diagnostic confict
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 25 Dec 2022 17:29:57 -0800
+
 regolith-session (0.7.1) focal; urgency=medium
 
   * Updated depends for regolith-session-sway
