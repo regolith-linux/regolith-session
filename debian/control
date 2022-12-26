@@ -15,7 +15,7 @@ Depends: ${misc:Depends},
     gnome-session-bin,
     mutter-common,
     regolith-i3-config,
-    regolith-session-common,
+    regolith-session-common (>= 0.7.1),
     x11-xserver-utils,
     regolith-look-default | regolith-look-2,
     xorg,
@@ -73,6 +73,6 @@ Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
-Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4-1regolith)
+Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Regolith customized SwayWM session
  This package contains common scripts required by regolith-session variants.
