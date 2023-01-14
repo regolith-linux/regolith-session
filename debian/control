@@ -17,6 +17,7 @@ Depends: ${misc:Depends},
     regolith-i3-root-config,
     regolith-look-default | regolith-look-2,
     regolith-session-common (>= 0.7.1),
+    x-terminal-emulator,
     x11-xserver-utils,
     xorg,
     xrescat
