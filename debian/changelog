@@ -1,3 +1,16 @@
+regolith-session (0.7.3) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Update package deps for wayland
+  * cleanup
+  * Move desktop dep to flashback session to keep desktop wm indenpendent
+
+  [ Soumya Ranjan Patnaik ]
+  * Added gnome-settings-daemon and gnome-terminal as dependencies for regolith-session-sway
+  * Prevent loading the incorrect look
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Tue, 17 Jan 2023 10:11:12 +0530
+
 regolith-session (0.7.2) focal; urgency=medium
 
   [ Ken Gilmer ]
