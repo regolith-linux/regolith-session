@@ -65,6 +65,7 @@ Depends: ${misc:Depends},
     trawldb,
     wl-clipboard,
     xwayland
+Recommends: gnome-terminal
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
