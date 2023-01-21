@@ -1,3 +1,10 @@
+regolith-session (0.7.4) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * Fixed workspace naming for resource cleanup
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Sat, 21 Jan 2023 12:18:59 +0530
+
 regolith-session (0.7.3) focal; urgency=medium
 
   [ Ken Gilmer ]
