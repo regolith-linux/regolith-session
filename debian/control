@@ -52,11 +52,11 @@ Depends: ${misc:Depends},
     clipman,
     dbus,
     gnome-session-bin,
+    gnome-settings-daemon,
     regolith-displayd,
     regolith-inputd,
-    gnome-settings-daemon,
-    regolith-look-default-loader,
     regolith-look-default | regolith-look-2,
+    regolith-look-default-loader,
     regolith-session-common,
     regolith-sway-root-config,
     sway-regolith,
@@ -66,7 +66,10 @@ Depends: ${misc:Depends},
     trawldb,
     wl-clipboard,
     xwayland
-Recommends: gnome-terminal
+Recommends: 
+    gnome-terminal,
+    regolith-wm-ilia,
+    regolith-wm-rofication-ilia
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
