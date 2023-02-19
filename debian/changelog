@@ -1,3 +1,10 @@
+regolith-session (0.7.6) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Add ilia and rofication and associated config to sway session recommends for usable setup
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 19 Feb 2023 08:40:29 -0800
+
 regolith-session (0.7.5) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
