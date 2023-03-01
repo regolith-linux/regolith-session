@@ -45,34 +45,10 @@ Description: Regolith customized gnome-flashback session
  necessary to start a Regolith gnome-flashback / i3 desktop session.
  It is based on https://github.com/deuill/i3-gnome-flashback.
 
-Package: regolith-session-sway
-Architecture: any
-Depends: ${misc:Depends},
-    clipman,
-    dbus,
-    gnome-session-bin,
-    regolith-session-common,
-    regolith-look-default-loader,
-    sway-regolith,
-    regolith-sway-config,
-    swayidle,
-    trawlcat,
-    trawld,
-    trawldb,
-    regolith-displayd,
-    regolith-inputd,
-    wl-clipboard,
-    xwayland
-Provides: regolith-desktop-session
-Conflicts: session-shortcuts
-Description: Regolith customized SwayWM session
- This package contains the desktop and wayland session configuration
- necessary to start a Regolith sway session.
-
 Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
-Description: Regolith customized SwayWM session
+Description: Common files for regolith sessions
  This package contains common scripts required by regolith-session variants.

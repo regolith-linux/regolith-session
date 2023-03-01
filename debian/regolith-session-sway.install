@@ -1,5 +1,0 @@
-usr/bin/regolith-session-wayland
-usr/share/gnome-session/sessions/regolith-wayland.session
-usr/share/wayland-sessions
-usr/share/applications/regolith-wayland.desktop
-etc/regolith/sway
