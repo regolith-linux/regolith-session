@@ -1,3 +1,9 @@
+regolith-session (0.7.4) focal; urgency=medium
+
+  * version bump
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 03 Mar 2023 07:55:36 -0800
+
 regolith-session (0.7.3) kinetic; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
