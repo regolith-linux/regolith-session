@@ -1,18 +1,39 @@
-regolith-session (0.7.4) focal; urgency=medium
+regolith-session (0.7.6) focal; urgency=medium
 
-  * version bump
+  [ Ken Gilmer ]
+  * Add ilia and rofication and associated config to sway session recommends for usable setup
 
- -- Regolith Linux <regolith.linux@gmail.com>  Fri, 03 Mar 2023 07:55:36 -0800
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 19 Feb 2023 08:40:29 -0800
 
-regolith-session (0.7.3) kinetic; urgency=medium
+regolith-session (0.7.5) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
-  * Changed source package format
+  * Change package format
 
-  [ Regolith Linux ]
-  * Minor cleanup of package metadata
+  [ Ken Gilmer ]
+  * Add dependency on virt look package to ensure resources are loaded
 
- -- Regolith Linux <regolith.linux@gmail.com>  Tue, 28 Feb 2023 20:38:51 -0800
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 18 Feb 2023 08:04:29 -0800
+
+regolith-session (0.7.4) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * Fixed workspace naming for resource cleanup
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Sat, 21 Jan 2023 12:18:59 +0530
+
+regolith-session (0.7.3) focal; urgency=medium
+
+  [ Ken Gilmer ]
+  * Update package deps for wayland
+  * cleanup
+  * Move desktop dep to flashback session to keep desktop wm indenpendent
+
+  [ Soumya Ranjan Patnaik ]
+  * Added gnome-settings-daemon and gnome-terminal as dependencies for regolith-session-sway
+  * Prevent loading the incorrect look
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Tue, 17 Jan 2023 10:11:12 +0530
 
 regolith-session (0.7.2) focal; urgency=medium
 
