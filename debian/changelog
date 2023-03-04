@@ -1,3 +1,16 @@
+regolith-session (0.7.7) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * Changed source package format
+
+  [ Regolith Linux ]
+  * Minor cleanup of package metadata
+  * Package changes
+  * version bump
+  * Package changes
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 04 Mar 2023 08:38:18 -0800
+
 regolith-session (0.7.6) focal; urgency=medium
 
   [ Ken Gilmer ]
