@@ -12,6 +12,7 @@ Architecture: any
 Depends: ${misc:Depends},
     dbus,
     gnome-flashback,
+    gnome-session-flashback,
     gnome-session-bin,
     mutter-common,
     regolith-i3-root-config,
