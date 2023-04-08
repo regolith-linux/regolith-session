@@ -1,3 +1,10 @@
+regolith-session (0.7.8) focal; urgency=medium
+
+  * Migrate to wm agnostic packages in x11
+  * Add regolith-look-default to Recommendsfor both sessions to (testing TBD) cause the default session to be installed when regolith is installed.  Bootstrapping the session initially requires the default look, but should be uninstallable after another look has been configured in user dir
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 08 Apr 2023 10:19:52 -0700
+
 regolith-session (0.7.7) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
