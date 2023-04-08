@@ -22,19 +22,20 @@ Depends: ${misc:Depends},
     xorg,
     xrescat
 Recommends:
-  i3-next-workspace,
-  i3xrocks-cpu-usage,
-  i3xrocks-net-traffic,
-  i3xrocks-time,
-  regolith-ftue,
-  regolith-i3-compositor,
-  regolith-i3-control-center-regolith | regolith-i3-control-center,
-  regolith-wm-ftue,
-  regolith-i3-i3xrocks,
-  regolith-wm-ilia,
-  regolith-wm-rofication-ilia,
-  regolith-wm-swap-focus,
-  regolith-i3xrocks-config
+    i3-next-workspace,
+    i3xrocks-cpu-usage,
+    i3xrocks-net-traffic,
+    i3xrocks-time,
+    regolith-ftue,
+    regolith-i3-compositor,
+    regolith-i3-control-center-regolith | regolith-i3-control-center,
+    regolith-i3-i3xrocks,
+    regolith-i3xrocks-config,
+    regolith-look-default,
+    regolith-wm-ftue,
+    regolith-wm-ilia,
+    regolith-wm-rofication-ilia,
+    regolith-wm-swap-focus
 Suggests:
     update-manager,
     software-properties-gtk
@@ -67,6 +68,7 @@ Depends: ${misc:Depends},
     xwayland
 Recommends: 
     gnome-terminal,
+    regolith-look-default,
     regolith-wm-ilia,
     regolith-wm-rofication-ilia
 Provides: regolith-desktop-session
