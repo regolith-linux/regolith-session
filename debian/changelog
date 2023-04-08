@@ -1,3 +1,9 @@
+regolith-session (0.7.9) focal; urgency=medium
+
+  * Make regolith-look-default a hard dependency for both sessions
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 08 Apr 2023 11:07:31 -0700
+
 regolith-session (0.7.8) focal; urgency=medium
 
   * Migrate to wm agnostic packages in x11
