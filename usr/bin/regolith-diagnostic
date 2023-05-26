@@ -25,7 +25,11 @@ print_file "$HOME/.Xresources"
 print_file "$HOME/.config/regolith2/Xresources"
 print_file "$HOME/.cache/regolith2/Xresources-generated"
 
-xrdb -query
+if [ $XDG_SESSION_TYPE == "wayland" ]; then
+  trawldb -q
+else
+  xrdb -query
+fi
 
 echo "--- i3"
 i3 --moreversion
@@ -48,5 +52,3 @@ gsettings list-recursively org.gnome.desktop.wm.keybindings
 gsettings list-recursively org.gnome.settings-daemon.plugins.media-keys
 gsettings list-recursively org.gnome.desktop.wm.preferences
 
-echo "--- trawl"
-trawl -q
