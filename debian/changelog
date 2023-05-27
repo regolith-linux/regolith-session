@@ -1,3 +1,10 @@
+regolith-session (0.7.10) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: query trawl resources only if the session is wayland
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 27 May 2023 09:49:23 -0700
+
 regolith-session (0.7.9) focal; urgency=medium
 
   * Make regolith-look-default a hard dependency for both sessions
