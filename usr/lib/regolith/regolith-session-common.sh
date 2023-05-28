@@ -2,27 +2,27 @@
 # This script contains common functions for Regolith session management
 
 # File Locations - Optional User Overrides
-USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith2/Xresources"
-USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith2/Xresources.d"
+USER_XRESOURCE_OVERRIDE_FILE="$HOME/.config/regolith3/Xresources"
+USER_XRESOURCE_SEARCH_PATH="$HOME/.config/regolith3/Xresources.d"
 
 # File Locations - System Defaults
 DEFAULT_XRESOURCE_LOOK_PATH="/usr/share/regolith-look/default"
 
 DEFAULT_SYS_I3_CONFIG_FILE="/etc/regolith/i3/config"
-DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith2/i3/config"
+DEFAULT_USER_I3_CONFIG_FILE="$HOME/.config/regolith3/i3/config"
 
 DEFAULT_SYS_SWAY_CONFIG_FILE="/etc/regolith/sway/config"
-DEFAULT_USER_SWAY_CONFIG_FILE="$HOME/.config/regolith2/sway/config"
+DEFAULT_USER_SWAY_CONFIG_FILE="$HOME/.config/regolith3/sway/config"
 
 # File Locations - Baseline
 BASELINE_XRESOURCE_FILE="$HOME/.Xresources"
 
 # Regolith Look directories
 DEFAULT_LOOK_ROOT="/usr/share/regolith-look"
-USER_LOOK_ROOT="$HOME/.config/regolith2/looks"
+USER_LOOK_ROOT="$HOME/.config/regolith3/looks"
 
 # File location - user scripts
-USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith2/logout"
+USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith3/logout"
 
 DEFAULT_SESSION_TYPE="i3"
 

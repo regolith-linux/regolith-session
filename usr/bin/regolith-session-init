@@ -8,7 +8,7 @@ source /usr/lib/regolith/regolith-session-common.sh
 # --------- Script Main -----------
 
 load_standard_xres  # ~/.Xresources
-load_regolith_xres  # ~/.config/regolith2/Xresources
+load_regolith_xres  # ~/.config/regolith3/Xresources
 
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 # See https://zork.net/~st/jottings/gnome-i3.html for details
