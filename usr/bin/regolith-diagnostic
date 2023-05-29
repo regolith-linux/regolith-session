@@ -22,8 +22,8 @@ print_file /etc/lsb-release
 
 echo "--- Xresources"
 print_file "$HOME/.Xresources"
-print_file "$HOME/.config/regolith2/Xresources"
-print_file "$HOME/.cache/regolith2/Xresources-generated"
+print_file "$HOME/.config/regolith3/Xresources"
+print_file "$HOME/.cache/regolith3/Xresources-generated"
 
 if [ $XDG_SESSION_TYPE == "wayland" ]; then
   trawldb -q
