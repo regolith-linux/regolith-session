@@ -14,6 +14,8 @@ print_file() {
 
 echo "--- Regolith Diagnostic - $(date)"
 print_file /etc/regolith/version
+echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
+echo "DESKTOP_SESSION=$DESKTOP_SESSION"
 
 echo "--- System Info "
 uname -a
