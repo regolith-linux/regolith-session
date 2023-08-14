@@ -84,12 +84,23 @@ load_regolith_xres() {
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
+    MOST_RECENT_LOOK=$(ls -td /usr/share/regolith-look/* | head -n 1)
+
+    if [ -d "$MOST_RECENT_LOOK" ]; then
+        DEFAULT_XRESOURCE_LOOK_PATH="$MOST_RECENT_LOOK"
+    fi
+
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
-    LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
+
+    if [ -d "$LOOK_STYLE_ROOT_PATH" ]; then
+        LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
+    else 
+        LOOK_STYLE_ROOT_FILE="$DEFAULT_XRESOURCE_LOOK_PATH/root"
+    fi
 
     if [ -e "$LOOK_STYLE_ROOT_FILE" ]; then
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
-    fi
+    fi #TODO: emit some dialog notifying user of invalid configuration on else
 
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
@@ -103,12 +114,23 @@ load_regolith_trawlres() {
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
+    MOST_RECENT_LOOK=$(ls -td /usr/share/regolith-look/* | head -n 1)
+
+    if [ -d "$MOST_RECENT_LOOK" ]; then
+        DEFAULT_XRESOURCE_LOOK_PATH="$MOST_RECENT_LOOK"
+    fi
+
     LOOK_STYLE_ROOT_PATH=$(trawlcat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
-    LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
+
+    if [ -d "$LOOK_STYLE_ROOT_PATH" ]; then
+        LOOK_STYLE_ROOT_FILE="$LOOK_STYLE_ROOT_PATH/root"
+    else 
+        LOOK_STYLE_ROOT_FILE="$DEFAULT_XRESOURCE_LOOK_PATH/root"
+    fi
 
     if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE" 
-    fi
+    fi #TODO: emit some dialog notifying user of invalid configuration on else
     
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
