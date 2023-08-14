@@ -1,3 +1,10 @@
+regolith-session (0.9.0ubuntu1) UNRELEASED; urgency=medium
+
+  * add error handling in case that Xres/trawl look path is invalid
+  * fix: on first lanch of sway session, call load_look() function to setup environment
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 13 Aug 2023 18:52:29 -0700
+
 regolith-session (0.9.0) focal; urgency=medium
 
   * feat: if a look is not set in xres/trawl, load the most recently installed look instead of default
