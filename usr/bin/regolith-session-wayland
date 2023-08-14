@@ -18,11 +18,23 @@ load_regolith_trawlres
 
 trawl_sway_cleanup
 
+UPDATE_FLAG_DIR="$HOME/.config/regolith3/flags"
+if [ ! -e "$UPDATE_FLAG_DIR" ]; then
+    # flag file has not been created, meaning this is first session load
+    # in this case, we need to configure some desktop settings from the look
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
+    if [ -n  "$LOADER_PATH" ]; then
+        # Load the look-specific script that has a function called load_look()
+        source "$LOADER_PATH"
+        # Call look function to update UI
+        load_look
+    fi
+fi
+
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
     dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
 fi
-
 
 # Import environment variables from environment.d
 while read -r l; do

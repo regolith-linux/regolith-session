@@ -48,12 +48,10 @@ refresh() {
 
     # Determine if Look loader script is available
     LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
-    echo "Loader Path: $LOADER_PATH"
     if [ -n  "$LOADER_PATH" ]; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
         # Call look function to update UI
-        echo "Executing look loader script: $LOADER_PATH"
         load_look
 
         # restart window manager after merging Xresources
