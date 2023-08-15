@@ -28,7 +28,7 @@ Recommends:
     i3xrocks-net-traffic,
     i3xrocks-time,
     regolith-ftue,
-    regolith-i3-compositor,
+    regolith-compositor-picom-glx,
     regolith-i3-control-center-regolith | regolith-i3-control-center,
     regolith-i3-i3xrocks,
     regolith-i3xrocks-config,    
