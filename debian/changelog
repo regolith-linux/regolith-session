@@ -1,3 +1,9 @@
+regolith-session (0.9.5) focal; urgency=medium
+
+  * fix: fix debian install filename for extension
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 15 Aug 2023 07:41:27 -0700
+
 regolith-session (0.9.4) focal; urgency=medium
 
   * fix: move idle autostart file to seperate package as soft dep to maintain compat w/ upstream flashback
