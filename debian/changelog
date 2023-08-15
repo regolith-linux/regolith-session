@@ -1,3 +1,10 @@
+regolith-session (0.9.3) focal; urgency=medium
+
+  * fix: install picom compositor by default on x11 session
+  * fix: Ship idle monitor autostart desktop file.  Addresses https://github.com/regolith-linux/regolith-session/pull/15
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 14 Aug 2023 20:28:39 -0700
+
 regolith-session (0.9.2) focal; urgency=medium
 
   * feat: enable loading of last installed theme on first session install in xorg session
