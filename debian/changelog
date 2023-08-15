@@ -1,3 +1,9 @@
+regolith-session (0.9.6) focal; urgency=medium
+
+  * fix: add conflicts to avoid collision on ext package
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 15 Aug 2023 07:44:52 -0700
+
 regolith-session (0.9.5) focal; urgency=medium
 
   * fix: fix debian install filename for extension
