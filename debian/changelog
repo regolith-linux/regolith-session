@@ -1,3 +1,9 @@
+regolith-session (0.9.4) focal; urgency=medium
+
+  * fix: move idle autostart file to seperate package as soft dep to maintain compat w/ upstream flashback
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 15 Aug 2023 07:16:12 -0700
+
 regolith-session (0.9.3) focal; urgency=medium
 
   * fix: install picom compositor by default on x11 session
