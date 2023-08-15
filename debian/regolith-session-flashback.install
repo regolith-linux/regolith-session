@@ -3,4 +3,3 @@ usr/share/xsessions
 usr/share/applications/regolith.desktop
 usr/bin/regolith-session
 usr/bin/regolith-session-init
-etc/xdg/autostart
