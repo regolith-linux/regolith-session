@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name[da]=Overvåg inaktivitet (GNOME Flashback)
+Name[hr]=Nadgledanje u mirovanju (GNOME Flashback)
+Name[hu]=Üresjárat-figyelő (GNOME Flashback)
+Name[pl]=Monitorowanie bezczynności (Tradycyjne środowisko GNOME)
+Name[pt_BR]=Monitor ocioso (GNOME Flashback)
+Name[ru]=Наблюдение за бездействием (GNOME Flashback)
+Name[sr]=Праћење мировања (Стари Гном)
+Name[sv]=Inaktivitetsövervakare (GNOME Flashback)
+Name[tr]=Boşluk Gözlemcisi (GNOME Flashback)
+Name[uk]=Монітор бездіяльності (GNOME Flashback)
+Name=Idle Monitor (GNOME Flashback)
+Exec=/usr/local/libexec/gnome-flashback-idle-monitor
+AutostartCondition=GSettings org.gnome.gnome-flashback idle-monitor
+OnlyShowIn=GNOME-Flashback;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true
