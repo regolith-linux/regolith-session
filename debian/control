@@ -89,7 +89,7 @@ Description: Common files for regolith X11 session
 Package: regolith-session-flashback-ext
 Architecture: any
 Depends: ${misc:Depends}
-Conflicts: gnome-session-flashback
+Conflicts: gnome-session-flashback, regolith-session-flashback (<= 0.9.3)
 Description: Additional files for regolith X11 session
  This package contains the idle monitor autostart desktop file.
 
