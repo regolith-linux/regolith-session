@@ -1,3 +1,9 @@
+regolith-session (0.9.7) focal; urgency=medium
+
+  * fix: set XDG_CURRENT_DESKTOP for wayland session (fixes screencasting)
+
+ -- Soumya Ranjan Patnaik <soumyaranjan1812@gmail.com>  Mon, 18 Sep 2023 02:00:22 +0530
+
 regolith-session (0.9.6) focal; urgency=medium
 
   * fix: add conflicts to avoid collision on ext package
