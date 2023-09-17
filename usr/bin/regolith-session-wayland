@@ -41,6 +41,11 @@ while read -r l; do
     eval export $l
 done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
 
+# Set XDG_CURRENT_DESKTOP
+if [ -z "$XDG_CURRENT_DESKTOP" ]; then
+    export XDG_CURRENT_DESKTOP="Regolith:GNOME:sway"
+fi
+
 # Start sway-regolith
 unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
