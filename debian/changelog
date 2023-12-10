@@ -1,3 +1,9 @@
+regolith-session (0.9.8) focal; urgency=medium
+
+  * fix: add (soft) dependency to xdg-desktop-portal-regolith due to gnome 45 interop issues.
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 10 Dec 2023 15:19:01 -0800
+
 regolith-session (0.9.7) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
