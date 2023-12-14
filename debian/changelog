@@ -1,3 +1,9 @@
+regolith-session (0.9.10) focal; urgency=medium
+
+  * fix: set XDG_CURRENT_DESKTOP, overriding previous value if already set
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 14 Dec 2023 07:32:13 -0800
+
 regolith-session (0.9.8) focal; urgency=medium
 
   * fix: add (soft) dependency to xdg-desktop-portal-regolith due to gnome 45 interop issues.
