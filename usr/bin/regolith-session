@@ -4,7 +4,7 @@
 SESSION_IDENTIFIER="Regolith-X11"
 
 if [ -z "$XDG_CURRENT_DESKTOP" ]; then
-    export XDG_CURRENT_DESKTOP="Regolith-X11:GNOME-Flashback:GNOME"
+    export XDG_CURRENT_DESKTOP="$SESSION_IDENTIFIER:GNOME-Flashback:GNOME"
 fi
 
 # Attempt to determine gnome-session version based on OS version
