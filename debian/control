@@ -37,7 +37,7 @@ Recommends:
     regolith-wm-ilia,
     regolith-wm-rofication-ilia,
     regolith-wm-swap-focus,
-    xdg-desktop-portal-regolith-x11
+    xdg-desktop-portal-regolith-x11-config
 Suggests:
     update-manager,
     software-properties-gtk
@@ -73,7 +73,7 @@ Recommends:
     regolith-look-default,
     regolith-wm-ilia,
     regolith-wm-rofication-ilia,
-    xdg-desktop-portal-regolith-wayland
+    xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session

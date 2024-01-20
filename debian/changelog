@@ -1,3 +1,9 @@
+regolith-session (1.0.1) focal; urgency=medium
+
+  * fix: bad package names in control
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Jan 2024 14:33:09 -0800
+
 regolith-session (1.0.0) focal; urgency=medium
 
   * refactor: fork XDG session name per backend type (x11/wayland) for xdg portals support
