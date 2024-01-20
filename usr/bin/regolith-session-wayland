@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script initializes Regolith Xresources and launches sway.
+# This script initializes Regolith Trawl resources and launches Sway.
 
 set -Eeu -o pipefail
 source /usr/lib/regolith/regolith-session-common.sh
@@ -33,7 +33,7 @@ fi
 
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
+    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
 fi
 
 # Import environment variables from environment.d
@@ -42,13 +42,13 @@ while read -r l; do
 done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
 
 # Set XDG_CURRENT_DESKTOP
-export XDG_CURRENT_DESKTOP="Regolith:GNOME:sway"
+export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
 
 # Start sway-regolith
 unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
-echo "Regolith is launching sway with $SWAY_CONFIG_FILE"
+echo "Regolith is launching Sway with $SWAY_CONFIG_FILE"
 
-if [[ "$unsupported_gpu" == "true" ]]; then
+if [[ "${unsupported_gpu,,}" == "true" ]]; then
     sway-regolith -c "$SWAY_CONFIG_FILE" --unsupported-gpu
 else
     sway-regolith -c "$SWAY_CONFIG_FILE" 
