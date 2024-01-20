@@ -84,8 +84,6 @@ Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
-Recommends:
-    
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Common files for regolith X11 session
  This package contains common scripts required by regolith-session variants.
