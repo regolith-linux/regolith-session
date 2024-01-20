@@ -26,7 +26,7 @@ fi
 # Register with gnome-session so that it does not kill the whole session thinking it is dead.
 # See https://zork.net/~st/jottings/gnome-i3.html for details
 if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
+    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-X11" "string:$DESKTOP_AUTOSTART_ID"
 fi
 
 resolve_default_config_file

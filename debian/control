@@ -36,7 +36,8 @@ Recommends:
     regolith-wm-ftue,
     regolith-wm-ilia,
     regolith-wm-rofication-ilia,
-    regolith-wm-swap-focus
+    regolith-wm-swap-focus,
+    xdg-desktop-portal-regolith-x11
 Suggests:
     update-manager,
     software-properties-gtk
@@ -71,7 +72,8 @@ Recommends:
     gnome-terminal,
     regolith-look-default,
     regolith-wm-ilia,
-    regolith-wm-rofication-ilia
+    regolith-wm-rofication-ilia,
+    xdg-desktop-portal-regolith-wayland
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
@@ -83,7 +85,7 @@ Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
 Recommends:
-    xdg-desktop-portal-regolith    
+    
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Common files for regolith X11 session
  This package contains common scripts required by regolith-session variants.
@@ -94,4 +96,3 @@ Depends: ${misc:Depends}
 Conflicts: gnome-session-flashback, regolith-session-flashback (<= 0.9.3)
 Description: Additional files for regolith X11 session
  This package contains the idle monitor autostart desktop file.
-

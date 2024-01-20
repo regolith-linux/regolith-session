@@ -1,3 +1,11 @@
+regolith-session (1.0.0) focal; urgency=medium
+
+  * refactor: fork XDG session name per backend type (x11/wayland) for xdg portals support
+  * fix: use variable
+  * fix: add missed files
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Jan 2024 10:45:26 -0800
+
 regolith-session (0.9.10) focal; urgency=medium
 
   * fix: set XDG_CURRENT_DESKTOP, overriding previous value if already set
