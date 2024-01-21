@@ -34,7 +34,6 @@ Recommends:
     regolith-i3xrocks-config,    
     regolith-session-flashback-ext,
     regolith-wm-ftue,
-    regolith-wm-ilia,
     regolith-wm-rofication-ilia,
     regolith-wm-swap-focus
 Suggests:
@@ -70,7 +69,6 @@ Depends: ${misc:Depends},
 Recommends: 
     gnome-terminal,
     regolith-look-default,
-    regolith-wm-ilia,
     regolith-wm-rofication-ilia
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
