@@ -1,3 +1,9 @@
+regolith-session (1.0.3) focal; urgency=medium
+
+  * fix: remove deprecated package from recommends
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 23 Jan 2024 18:03:31 -0800
+
 regolith-session (1.0.2) focal; urgency=medium
 
   * refactor: another attempt for different session ids
