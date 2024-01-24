@@ -66,7 +66,7 @@ load_standard_trawlres() {
 # Change the quotes in workspace names from double to to single.
 # Due to a limitation of the preprocessor they have double quotes.
 # The i3-wm workspace command fails with double quotes in the name
-# NOTE: Calling this function in Regolith 2 desktop sessio was removed due to silent failures
+# NOTE: Calling this function in Regolith 2 desktop session was removed due to silent failures
 xres_i3_cleanup() {
     xrdb -query |grep wm.workspace.|sed "s/\"/'/g"|xrdb -merge
 }
