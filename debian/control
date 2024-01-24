@@ -34,7 +34,6 @@ Recommends:
     regolith-i3xrocks-config,    
     regolith-session-flashback-ext,
     regolith-wm-ftue,
-    regolith-wm-ilia,
     regolith-wm-rofication-ilia,
     regolith-wm-swap-focus,
     xdg-desktop-portal-regolith-x11-config
@@ -71,7 +70,6 @@ Depends: ${misc:Depends},
 Recommends: 
     gnome-terminal,
     regolith-look-default,
-    regolith-wm-ilia,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
