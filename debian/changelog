@@ -1,3 +1,9 @@
+regolith-session (1.0.2) focal; urgency=medium
+
+  * refactor: another attempt for different session ids
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Jan 2024 15:19:58 -0800
+
 regolith-session (0.9.10) focal; urgency=medium
 
   * fix: set XDG_CURRENT_DESKTOP, overriding previous value if already set

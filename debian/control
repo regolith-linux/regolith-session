@@ -36,7 +36,8 @@ Recommends:
     regolith-wm-ftue,
     regolith-wm-ilia,
     regolith-wm-rofication-ilia,
-    regolith-wm-swap-focus
+    regolith-wm-swap-focus,
+    xdg-desktop-portal-regolith-x11-config
 Suggests:
     update-manager,
     software-properties-gtk
@@ -71,7 +72,8 @@ Recommends:
     gnome-terminal,
     regolith-look-default,
     regolith-wm-ilia,
-    regolith-wm-rofication-ilia
+    regolith-wm-rofication-ilia,
+    xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
@@ -81,9 +83,7 @@ Description: Regolith customized SwayWM session
 Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
-    regolith-resource-loader
-Recommends:
-    xdg-desktop-portal-regolith    
+    regolith-resource-loader  
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Common files for regolith X11 session
  This package contains common scripts required by regolith-session variants.
