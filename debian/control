@@ -57,7 +57,6 @@ Depends: ${misc:Depends},
     regolith-displayd,
     regolith-inputd,
     regolith-look-default,
-    regolith-look-default-loader,
     regolith-session-common,
     regolith-sway-root-config,
     sway-regolith,
@@ -68,8 +67,7 @@ Depends: ${misc:Depends},
     wl-clipboard,
     xwayland
 Recommends: 
-    gnome-terminal,
-    regolith-look-default,
+    gnome-terminal,    
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
