@@ -1,3 +1,9 @@
+regolith-session (1.0.5) focal; urgency=medium
+
+  * fix: clean up dependency decls
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 28 Jan 2024 16:11:41 -0800
+
 regolith-session (1.0.3) focal; urgency=medium
 
   * fix: remove deprecated package from recommends
