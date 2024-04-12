@@ -1,5 +1,0 @@
-# For using firefox with wayland
-MOZ_ENABLE_WAYLAND=1
-
-# For IntelliJ IDEs and Android Studio
-STUDIO_JDK=/usr/lib/jvm/java-11-openjdk/
