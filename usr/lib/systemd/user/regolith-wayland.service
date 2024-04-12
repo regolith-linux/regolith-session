@@ -1,0 +1,32 @@
+[Unit]
+Description=Regolith Session on sway
+# On wayland, force a session shutdown
+OnFailure=gnome-session-shutdown.target
+OnFailureJobMode=replace-irreversibly
+CollectMode=inactive-or-failed
+RefuseManualStart=on
+RefuseManualStop=on
+
+After=gnome-session-manager.target
+
+Requisite=gnome-session-initialized.target
+PartOf=gnome-session-initialized.target
+Before=gnome-session-initialized.target
+
+ConditionEnvironment=XDG_SESSION_TYPE=wayland
+
+[Service]
+Slice=session.slice
+Type=notify
+ExecStart=regolith-session-wayland
+
+# unset some environment variables that were set by the shell and won't work now that the shell is gone
+ExecStopPost=-/bin/sh -c 'test "$SERVICE_RESULT" != "exec-condition" && systemctl --user unset-environment WAYLAND_DISPLAY DISPLAY XAUTHORITY'
+
+# On wayland we cannot restart
+Restart=no
+# Kill any stubborn child processes after this long
+TimeoutStopSec=5
+
+# Lower down gnome-shell's OOM score to avoid being killed by OOM-killer too early
+OOMScoreAdjust=-1000
