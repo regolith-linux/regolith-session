@@ -23,12 +23,6 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
     fi
 fi
 
-# Register with gnome-session so that it does not kill the whole session thinking it is dead.
-# See https://zork.net/~st/jottings/gnome-i3.html for details
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith" "string:$DESKTOP_AUTOSTART_ID"
-fi
-
 resolve_default_config_file
 echo "Regolith is launching i3 with $I3_CONFIG_FILE"
 i3 -c "$I3_CONFIG_FILE"
@@ -37,9 +31,4 @@ i3 -c "$I3_CONFIG_FILE"
 if [ -e "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
     echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
 	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
-fi
-
-# Close session when i3 exits.
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.Logout "uint32:1"
 fi

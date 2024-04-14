@@ -28,11 +28,6 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
     fi
 fi
 
-# Register with gnome-session so that it does not kill the whole session thinking it is dead.
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
-fi
-
 # Set XDG_CURRENT_DESKTOP
 export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
 
