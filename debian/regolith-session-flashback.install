@@ -5,3 +5,4 @@ usr/bin/regolith-session
 usr/bin/regolith-session-init
 usr/lib/systemd/user/regolith.service
 usr/lib/systemd/user/regolith.target
+usr/lib/systemd/user/gnome-session@regolith.target.d
