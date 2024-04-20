@@ -1,5 +1,4 @@
 usr/share/gnome-session/sessions/regolith.session
 usr/share/xsessions
 usr/share/applications/regolith.desktop
-usr/bin/regolith-session
-usr/bin/regolith-session-init
+usr/bin/regolith-session-x11
