@@ -23,6 +23,9 @@ Type=notify
 NotifyAccess=all
 ExecStart=regolith-session-wayland
 
+# Setup custom environment for session
+EnvironmentFile=%h/.config/regolith3/sway/env
+
 # unset some environment variables that were set by the shell and won't work now that the shell is gone
 ExecStopPost=-/bin/sh -c 'test "$SERVICE_RESULT" != "exec-condition" && systemctl --user unset-environment WAYLAND_DISPLAY DISPLAY XAUTHORITY'
 

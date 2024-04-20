@@ -25,6 +25,9 @@ Type=notify
 NotifyAccess=all
 ExecStart=regolith-session-init
 
+# Setup custom environment for session
+EnvironmentFile=%h/.config/regolith3/sway/env
+
 # On X11 we do not need to unset any variables
 
 # On X11 we want to restart on-success and on-failure.
