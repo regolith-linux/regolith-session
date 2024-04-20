@@ -1,8 +1,7 @@
 usr/share/gnome-session/sessions/regolith.session
 usr/share/xsessions
 usr/share/applications/regolith.desktop
-usr/bin/regolith-session
-usr/bin/regolith-session-init
+usr/bin/regolith-session-x11
 usr/lib/systemd/user/regolith.service
 usr/lib/systemd/user/regolith.target
 usr/lib/systemd/user/gnome-session@regolith.target.d

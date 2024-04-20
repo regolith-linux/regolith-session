@@ -1,3 +1,9 @@
+regolith-session (1.1.2) focal; urgency=medium
+
+  * fix: update init scripts to detect gnome-session version for GNOME 46 breaking changes
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Apr 2024 14:30:12 -0700
+
 regolith-session (1.1.1) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
