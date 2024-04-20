@@ -25,9 +25,8 @@ fi
 if [ -f /etc/os-release ]; then
     source /etc/os-release
 
-    if [[ "$ID" == "arch" ]]; then 
-
-    
+    if [[ "$ID" == "arch" ]]; then # Assume Arch Linux system has "latest" gnome-session
+        exec gnome-session --session=$SESSION_ID --disable-acceleration-check "$@"
     elif [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" || "$VERSION_CODENAME" == "noble" ]]; then
         exec gnome-session --session=$SESSION_ID --disable-acceleration-check "$@"
     else
