@@ -20,6 +20,7 @@ ConditionEnvironment=XDG_SESSION_TYPE=wayland
 [Service]
 Slice=session.slice
 Type=notify
+NotifyAccess=all
 ExecStart=regolith-session-wayland
 
 # unset some environment variables that were set by the shell and won't work now that the shell is gone
