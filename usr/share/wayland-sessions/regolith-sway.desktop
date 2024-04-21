@@ -1,5 +1,5 @@
 [Desktop Entry]
 Name=Regolith on Wayland
 Comment=Productivity focused desktop environment
-Exec=/usr/bin/gnome-session --systemd --session=regolith-wayland
+Exec=/usr/bin/gnome-session --session=regolith-wayland
 Type=Application

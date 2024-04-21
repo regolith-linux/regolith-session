@@ -13,8 +13,8 @@ if [ -f /etc/os-release ]; then
     if [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" ]]; then
         exec gnome-session --session=regolith --disable-acceleration-check "$@"
     else
-        exec gnome-session --systemd --session=regolith --disable-acceleration-check "$@"
+        exec gnome-session --session=regolith --disable-acceleration-check "$@"
     fi 
 else 
-    exec gnome-session --systemd --session=regolith --disable-acceleration-check "$@"
+    exec gnome-session --session=regolith --disable-acceleration-check "$@"
 fi
