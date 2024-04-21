@@ -1,3 +1,10 @@
+regolith-session (1.1.1) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: environment file does not exist
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Apr 2024 18:46:25 -0700
+
 regolith-session (1.1.0) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
