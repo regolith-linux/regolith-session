@@ -6,4 +6,4 @@ Requisite=gnome-session-initialized.target
 PartOf=gnome-session-initialized.target
 Before=gnome-session-initialized.target
 
-Wants=regolith.service
+Wants=regolith-x11.service
