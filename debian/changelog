@@ -1,3 +1,18 @@
+regolith-session (1.1.0) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * feat: migrate sessions to systemd
+  * chore: cleanup unused sway environment file
+  * fix: add session.conf files for loading the required components
+  * chore: remove redundant environment.d load
+  * chore: start trawld using sytemd instead of using the startup script
+  * fix: remove erroneous registration call to session manager
+  * fix: set NotifyAccess=all to ensure wm has access to $NOTIFY_SOCKET
+  * feat: add support for custom environment files
+  * chore: drop --systemd flag
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Apr 2024 17:49:34 -0700
+
 regolith-session (1.0.5) focal; urgency=medium
 
   * fix: clean up dependency decls
