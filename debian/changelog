@@ -1,3 +1,10 @@
+regolith-session (1.1.3-2) focal; urgency=medium
+
+  * fix: update install file w/ renamed files
+  * fix: declare breaks to avoid debian install error due to file confict
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 22 Apr 2024 19:58:26 -0700
+
 regolith-session (1.1.3) focal; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
