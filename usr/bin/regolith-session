@@ -29,8 +29,10 @@ if [ -f /etc/os-release ]; then
         exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
     else
         exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+        echo "Using gnome-session built-in session"
     fi
 else
     echo "No /etc/os-release, guessing gnome-session cli api..."
     exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+    echo "Using gnome-session built-in session"
 fi
