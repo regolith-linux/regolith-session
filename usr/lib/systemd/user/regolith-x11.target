@@ -1,5 +1,5 @@
 [Unit]
-Description=Regolith on wayland
+Description=Regolith on X11
 DefaultDependencies=no
 
 Requisite=gnome-session-initialized.target

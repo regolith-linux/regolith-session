@@ -1,5 +1,5 @@
 [Unit]
-Description=Regolith Session on i3
+Description=Regolith Session for i3
 # On X11, try to show the GNOME Session Failed screen
 OnFailure=gnome-session-failed.target
 OnFailureJobMode=replace
@@ -26,7 +26,7 @@ NotifyAccess=all
 ExecStart=regolith-session-x11
 
 # Setup custom environment for session
-EnvironmentFile=-%h/.config/regolith3/sway/env
+EnvironmentFile=-%h/.config/regolith3/i3/env
 
 # On X11 we do not need to unset any variables
 
