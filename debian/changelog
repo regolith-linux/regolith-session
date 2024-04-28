@@ -1,3 +1,10 @@
+regolith-session (1.1.5) noble; urgency=medium
+
+  * fix: update labels and env path for session systemd files
+  * fix: explicitly initialize xrdb if xrescat fails
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 27 Apr 2024 17:34:42 -0700
+
 regolith-session (1.1.4) noble; urgency=medium
 
   * fix: correctly identify gnome-session version of debian testing/trixie
