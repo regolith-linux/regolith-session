@@ -20,6 +20,19 @@ gdm3_xrdb_fixup() {
         done
     fi
 }
+# Check if NOTIFY_SOCKET is available. This is used as a
+# test to see if the session uses systemd
+if [-z "$NOTIFY_SOCKET"]; then
+  # Register with gnome-session so that it does not kill the whole session thinking it is dead.
+  if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
+      dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-X11" "string:$DESKTOP_AUTOSTART_ID"
+  fi
+
+  # Export environment from Environment.d
+  while read -r l; do
+      eval export $l
+  done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+fi
 
 # --------- Script Main -----------
 
