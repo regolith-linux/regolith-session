@@ -1,3 +1,10 @@
+regolith-session (1.1.6) jammy; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: session errors when started with --builtin
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 30 Apr 2024 07:54:32 -0700
+
 regolith-session (1.1.5) noble; urgency=medium
 
   * fix: update labels and env path for session systemd files
