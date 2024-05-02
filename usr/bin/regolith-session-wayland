@@ -6,7 +6,7 @@ source /usr/lib/regolith/regolith-session-common.sh
 
 # Check if NOTIFY_SOCKET is available. This is used as a
 # test to see if the session uses systemd
-if [-z "$NOTIFY_SOCKET"]; then
+if [ -z "$NOTIFY_SOCKET" ]; then
   # Start trawl daemon manually
   trawld&
 
