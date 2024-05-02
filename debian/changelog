@@ -1,3 +1,9 @@
+regolith-session (1.1.8) jammy; urgency=medium
+
+  * fix: all imported vars qualified to resolve 'unbound variable' error
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 02 May 2024 06:49:34 -0700
+
 regolith-session (1.1.7) jammy; urgency=medium
 
   * fix: add whitespace to appease shell parser. Fixes x11 and wayland sessions on jammy (at least)
