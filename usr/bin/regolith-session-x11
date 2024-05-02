@@ -24,7 +24,7 @@ gdm3_xrdb_fixup() {
 # test to see if the session uses systemd
 if [ -z "${NOTIFY_SOCKET-}" ]; then
   # Register with gnome-session so that it does not kill the whole session thinking it is dead.
-  if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
+  if [ -n "${DESKTOP_AUTOSTART_ID-}" ]; then
       dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-X11" "string:$DESKTOP_AUTOSTART_ID"
   fi
 
