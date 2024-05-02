@@ -36,13 +36,13 @@ if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
     dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
 fi
 
+# Set XDG_CURRENT_DESKTOP
+export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
+
 # Import environment variables from environment.d
 while read -r l; do
     eval export $l
 done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
-
-# Set XDG_CURRENT_DESKTOP
-export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
 
 # Start sway-regolith
 unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
