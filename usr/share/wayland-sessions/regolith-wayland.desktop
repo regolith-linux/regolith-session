@@ -1,7 +1,6 @@
 [Desktop Entry]
-Name=Regolith on X11
+Name=Regolith / Wayland
 Comment=Productivity focused desktop environment
-Exec=/usr/bin/regolith-session
+Exec=/usr/bin/regolith-session regolith-wayland
 TryExec=/usr/bin/regolith-session
 Type=Application
-DesktopNames=Regolith;GNOME-Flashback;GNOME

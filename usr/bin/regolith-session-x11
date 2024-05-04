@@ -1,0 +1,64 @@
+#!/bin/bash
+# This script initializes Regolith Xresources and launches i3.
+
+set -Eeu -o pipefail
+
+source /usr/lib/regolith/regolith-session-common.sh
+
+gdm3_xrdb_fixup() {
+    if xrescat testkey defaultval > /dev/null 2>&1; then
+        echo "xrdb appears to be property initialized, skipping xrdb init"
+    else # TODO(kgilmer) ~ consider further predication upon distro/codename if reason to believe following codeblock might cause harm
+        echo "xrdb appears to not be running. Manually initializing.."
+
+        local sysresources=/etc/X11/Xresources
+        # source ~ https://git.launchpad.net/ubuntu/+source/gdm3/tree/debian/patches/ubuntu/xresources_is_a_dir.patch?h=applied/ubuntu/noble
+        for i in `ls "$sysresources"` ; do
+            if [ -r "$sysresources/$i"  -a -f "$sysresources/$i" ] && expr "$i" : '^[[:alnum:]_-]\+$' > /dev/null; then
+                xrdb -nocpp -merge "$sysresources/$i"
+            fi
+        done
+    fi
+}
+# Check if NOTIFY_SOCKET is available. This is used as a
+# test to see if the session uses systemd
+if [ -z "${NOTIFY_SOCKET-}" ]; then
+  # Register with gnome-session so that it does not kill the whole session thinking it is dead.
+  if [ -n "${DESKTOP_AUTOSTART_ID-}" ]; then
+      dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-X11" "string:$DESKTOP_AUTOSTART_ID"
+  fi
+
+  # Export environment from Environment.d
+  while read -r l; do
+      eval export $l
+  done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+fi
+
+# --------- Script Main -----------
+
+gdm3_xrdb_fixup     # Remove when https://bugs.launchpad.net/ubuntu/+source/gdm3/+bug/1955850 is fixed
+load_standard_xres  # ~/.Xresources
+load_regolith_xres  # ~/.config/regolith3/Xresources
+
+UPDATE_FLAG_DIR="$HOME/.config/regolith3/flags"
+if [ ! -e "$UPDATE_FLAG_DIR" ]; then
+    # flag file has not been created, meaning this is first session load
+    # in this case, we need to configure some desktop settings from the look
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
+    if [ -n  "$LOADER_PATH" ]; then
+        # Load the look-specific script that has a function called load_look()
+        source "$LOADER_PATH"
+        # Call look function to update UI
+        load_look
+    fi
+fi
+
+resolve_default_config_file
+echo "Regolith is launching i3 with $I3_CONFIG_FILE"
+i3 -c "$I3_CONFIG_FILE"
+
+# Run user's post logout script if script. Post logout means that the X session is closed at this point.
+if [ -e "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
+    echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
+	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
+fi

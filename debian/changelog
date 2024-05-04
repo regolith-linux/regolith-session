@@ -1,3 +1,78 @@
+regolith-session (1.1.8) jammy; urgency=medium
+
+  * fix: all imported vars qualified to resolve 'unbound variable' error
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Thu, 02 May 2024 06:49:34 -0700
+
+regolith-session (1.1.7) jammy; urgency=medium
+
+  * fix: add whitespace to appease shell parser. Fixes x11 and wayland sessions on jammy (at least)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 01 May 2024 18:46:09 -0700
+
+regolith-session (1.1.6) jammy; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: session errors when started with --builtin
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 30 Apr 2024 07:54:32 -0700
+
+regolith-session (1.1.5) noble; urgency=medium
+
+  * fix: update labels and env path for session systemd files
+  * fix: explicitly initialize xrdb if xrescat fails
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 27 Apr 2024 17:34:42 -0700
+
+regolith-session (1.1.4) noble; urgency=medium
+
+  * fix: correctly identify gnome-session version of debian testing/trixie
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 23 Apr 2024 07:21:08 -0700
+
+regolith-session (1.1.3-2) focal; urgency=medium
+
+  * fix: update install file w/ renamed files
+  * fix: declare breaks to avoid debian install error due to file confict
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 22 Apr 2024 19:58:26 -0700
+
+regolith-session (1.1.3) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: update ExecStart for x11 session to regolith-session-x11
+  * chore: follow consistent naming for all session components
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Apr 2024 18:57:02 -0700
+
+regolith-session (1.1.2) focal; urgency=medium
+
+  * fix: update init scripts to detect gnome-session version for GNOME 46 breaking changes
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 21 Apr 2024 14:30:12 -0700
+
+regolith-session (1.1.1) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: environment file does not exist
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Apr 2024 18:46:25 -0700
+
+regolith-session (1.1.0) focal; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * feat: migrate sessions to systemd
+  * chore: cleanup unused sway environment file
+  * fix: add session.conf files for loading the required components
+  * chore: remove redundant environment.d load
+  * chore: start trawld using sytemd instead of using the startup script
+  * fix: remove erroneous registration call to session manager
+  * fix: set NotifyAccess=all to ensure wm has access to $NOTIFY_SOCKET
+  * feat: add support for custom environment files
+  * chore: drop --systemd flag
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 20 Apr 2024 17:49:34 -0700
+
 regolith-session (1.0.5) focal; urgency=medium
 
   * fix: clean up dependency decls

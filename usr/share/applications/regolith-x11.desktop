@@ -1,9 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=regolith
+Name=regolith-x11
 Comment=Productivity-focused desktop environment, Regolith
-Exec=regolith-session-init
+Exec=regolith-session-x11
 X-GNOME-WMName=Regolith
 X-GNOME-Autostart-Phase=WindowManager
 X-GNOME-Provides=windowmanager
 X-GNOME-Autostart-Notify=false
+X-GNOME-HiddenUnderSystemd=true

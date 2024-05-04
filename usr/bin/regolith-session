@@ -1,20 +1,38 @@
 #!/bin/bash
 # shellcheck disable=SC1091
+set -Eeu -o pipefail
 
-if [ -z "$XDG_CURRENT_DESKTOP" ]; then
-    export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
+SESSION_TYPE=$1
+
+if [[ "$SESSION_TYPE" == "regolith-x11" ]]; then 
+    echo "Starting x11 Session..."
+
+    if [ -z "$XDG_CURRENT_DESKTOP" ]; then
+        export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
+    fi
+
+elif [[ "$SESSION_TYPE" == "regolith-wayland" ]]; then 
+    echo "Starting Wayland Session..."
+
+else 
+    echo "Session type must be specified by caller: regolith-wayland, regolith-x11. Unrecognized: '$SESSION_TYPE'"
+    exit 1
 fi
 
-# Attempt to determine gnome-session version based on OS version
-if [ -f /etc/os-release ]; then 
+# Determine gnome-session api based on system, since `gnome-session --version` returns ""
+if [ -f /etc/os-release ]; then
     source /etc/os-release
 
-    # Note: distro-support; add other type checks for non-systemd
-    if [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" ]]; then
-        exec gnome-session --session=regolith --disable-acceleration-check "$@"
+    if [[ "$ID" == "arch" ]]; then 
+        exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
+    elif [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" || "$VERSION_CODENAME" == "noble" || "$VERSION_CODENAME" == "trixie" ]]; then
+        exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
     else
-        exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
-    fi 
-else 
-    exec gnome-session --builtin --session=regolith --disable-acceleration-check "$@"
+        exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+        echo "Using gnome-session built-in session"
+    fi
+else
+    echo "No /etc/os-release, guessing gnome-session cli api..."
+    exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+    echo "Using gnome-session built-in session"
 fi

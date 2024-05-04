@@ -31,7 +31,7 @@ Recommends:
     regolith-ftue,
     regolith-i3-control-center-regolith | regolith-i3-control-center,
     regolith-i3-i3xrocks,
-    regolith-i3xrocks-config,    
+    regolith-i3xrocks-config,
     regolith-session-flashback-ext,
     regolith-wm-ftue,
     regolith-wm-rofication-ilia,
@@ -66,8 +66,8 @@ Depends: ${misc:Depends},
     trawldb,
     wl-clipboard,
     xwayland
-Recommends: 
-    gnome-terminal,    
+Recommends:
+    gnome-terminal,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
@@ -79,7 +79,8 @@ Description: Regolith customized SwayWM session
 Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
-    regolith-resource-loader  
+    regolith-resource-loader
+Breaks: regolith-session (<= 1.1.2)
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Common files for regolith X11 session
  This package contains common scripts required by regolith-session variants.

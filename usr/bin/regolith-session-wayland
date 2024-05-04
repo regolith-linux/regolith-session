@@ -4,11 +4,25 @@
 set -Eeu -o pipefail
 source /usr/lib/regolith/regolith-session-common.sh
 
+# Check if NOTIFY_SOCKET is available. This is used as a
+# test to see if the session uses systemd
+if [ -z "${NOTIFY_SOCKET-}" ]; then
+  # Start trawl daemon manually
+  trawld&
+
+  # Register with gnome-session so that it does not kill the whole session thinking it is dead.
+  if [ -n "${DESKTOP_AUTOSTART_ID-}" ]; then
+      dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
+  fi
+
+  # Export environmentt from Environment.d
+  while read -r l; do
+      eval export $l
+  done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+fi
+
 # --------- Script Main -----------
 resolve_default_config_file
-
-# Start trawl daemon
-trawld&
 
 load_standard_trawlres
 load_regolith_trawlres
@@ -30,16 +44,6 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
         load_look
     fi
 fi
-
-# Register with gnome-session so that it does not kill the whole session thinking it is dead.
-if [ -n "$DESKTOP_AUTOSTART_ID" ]; then
-    dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
-fi
-
-# Import environment variables from environment.d
-while read -r l; do
-    eval export $l
-done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
 
 # Set XDG_CURRENT_DESKTOP
 export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"

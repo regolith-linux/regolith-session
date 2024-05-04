@@ -7,3 +7,4 @@ X-GNOME-WMName=Regolith-Wayland
 X-GNOME-Autostart-Phase=WindowManager
 X-GNOME-Provides=windowmanager
 X-GNOME-Autostart-Notify=false
+X-GNOME-HiddenUnderSystemd=true
