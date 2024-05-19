@@ -70,6 +70,8 @@ Recommends:
     gnome-terminal,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
+Suggests:
+    sway-regolith-supplemental
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Description: Regolith customized SwayWM session
