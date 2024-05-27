@@ -53,9 +53,9 @@ unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 echo "Regolith is launching Sway with $SWAY_CONFIG_FILE"
 
 if [[ "${unsupported_gpu,,}" == "true" ]]; then
-    sway-regolith -c "$SWAY_CONFIG_FILE" --unsupported-gpu
+    sway -c "$SWAY_CONFIG_FILE" --unsupported-gpu
 else
-    sway-regolith -c "$SWAY_CONFIG_FILE" 
+    sway -c "$SWAY_CONFIG_FILE" 
 fi
 
 # Run user's post logout script if script. Post logout means that the wayland session has been terminated.
