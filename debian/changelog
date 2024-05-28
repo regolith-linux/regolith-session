@@ -1,3 +1,9 @@
+regolith-session (1.1.9) jammy; urgency=medium
+
+  * chore: rename sway bin based on changes in sway-regolith package
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 27 May 2024 09:54:59 -0700
+
 regolith-session (1.1.8) jammy; urgency=medium
 
   * fix: all imported vars qualified to resolve 'unbound variable' error
