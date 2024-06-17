@@ -5,5 +5,3 @@ DefaultDependencies=no
 Requisite=gnome-session-initialized.target
 PartOf=gnome-session-initialized.target
 Before=gnome-session-initialized.target
-
-Wants=regolith-wayland.service
