@@ -1,3 +1,10 @@
+regolith-session (1.1.10) jammy; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: dont start session service starting targets
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 18 Jun 2024 06:56:36 -0700
+
 regolith-session (1.1.9) jammy; urgency=medium
 
   * chore: rename sway bin based on changes in sway-regolith package
