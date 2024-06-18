@@ -13,6 +13,10 @@ Requisite=gnome-session-initialized.target
 PartOf=gnome-session-initialized.target
 Before=gnome-session-initialized.target
 
+PartOf=regolith-x11.target
+BindsTo=regolith-x11.target
+After=regolith-x11.target
+
 ConditionEnvironment=XDG_SESSION_TYPE=x11
 
 # Limit startup frequency more than the default

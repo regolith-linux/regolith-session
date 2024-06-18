@@ -13,6 +13,10 @@ Requisite=gnome-session-initialized.target
 PartOf=gnome-session-initialized.target
 Before=gnome-session-initialized.target
 
+PartOf=regolith-wayland.target
+BindsTo=regolith-wayland.target
+After=regolith-wayland.target
+
 Requires=trawld.service
 
 ConditionEnvironment=XDG_SESSION_TYPE=wayland
