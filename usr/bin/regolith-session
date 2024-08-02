@@ -10,10 +10,8 @@ if [[ "$SESSION_TYPE" == "regolith-x11" ]]; then
     if [ -z "$XDG_CURRENT_DESKTOP" ]; then
         export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
     fi
-
 elif [[ "$SESSION_TYPE" == "regolith-wayland" ]]; then 
     echo "Starting Wayland Session..."
-
 else 
     echo "Session type must be specified by caller: regolith-wayland, regolith-x11. Unrecognized: '$SESSION_TYPE'"
     exit 1
@@ -23,16 +21,13 @@ fi
 if [ -f /etc/os-release ]; then
     source /etc/os-release
 
-    if [[ "$ID" == "arch" ]]; then 
-        exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
-    elif [[ "$VERSION_CODENAME" == "bionic" || "$VERSION_CODENAME" == "buster" || "$VERSION_CODENAME" == "noble" || "$VERSION_CODENAME" == "trixie" ]]; then
-        exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
-    else
-        exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+    if [[ "$VERSION_CODENAME" == "jammy" ]]; then
         echo "Using gnome-session built-in session"
+        exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"        
+    else
+        exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"                
     fi
 else
     echo "No /etc/os-release, guessing gnome-session cli api..."
-    exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
-    echo "Using gnome-session built-in session"
+    exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
 fi
