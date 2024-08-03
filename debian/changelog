@@ -1,3 +1,10 @@
+regolith-session (1.1.12) jammy; urgency=medium
+
+  * fix: invert predicate on matching os release to gnome-session version
+  * fix: add bookworm to legacy path
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 03 Aug 2024 14:05:32 -0700
+
 regolith-session (1.1.10) jammy; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
