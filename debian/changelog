@@ -1,5 +1,20 @@
 regolith-session (1.1.12-2) jammy; urgency=medium
 
+  [ Ken Gilmer ]
+  * fix: remove package dep deprecated upstream (debian testing)
+  * Revert "fix: remove package dep deprecated upstream (debian testing)"
+
+  [ Khosrow Moossavi ]
+  * chore: remove obsolete package broadcast action
+  * feat: enable github action to test pull requests
+  * feat: enable github action to publish to unstable
+  * feat: enable github action to publish to testing
+  * feat: enable github action to prepare release
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 28 Jan 2025 10:59:49 -0500
+
+regolith-session (1.1.12-2) jammy; urgency=medium
+
   * fix: add dependency to policykit-1-gnome
 
  -- Regolith Linux <regolith.linux@gmail.com>  Mon, 30 Dec 2024 10:59:01 -0800
