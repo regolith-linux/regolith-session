@@ -1,3 +1,13 @@
+regolith-session (1.1.12-3) bookworm; urgency=medium
+
+  [ Khosrow Moossavi ]
+  * fix: create release tag from correct git sha
+
+  [ Regolith Linux ]
+  * chore: update gbp for debian branch
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 31 Jan 2025 17:26:39 -0800
+
 regolith-session (1.1.12-2) jammy; urgency=medium
 
   [ Ken Gilmer ]
