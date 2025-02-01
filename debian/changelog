@@ -1,3 +1,18 @@
+regolith-session (1.1.12-3) jammy; urgency=medium
+
+  [ Khosrow Moossavi ]
+  * chore: remove obsolete package broadcast action
+  * feat: enable github action to test pull requests
+  * feat: enable github action to publish to unstable
+  * feat: enable github action to publish to testing
+  * feat: enable github action to prepare release
+  * fix: create release tag from correct git sha
+
+  [ Ken Gilmer ]
+  * fix: remove deprecated package from control file. gnome-flashback no longer requires it, has it's own policykit impl (#45)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 31 Jan 2025 17:23:55 -0800
+
 regolith-session (1.1.12-2) jammy; urgency=medium
 
   * fix: add dependency to policykit-1-gnome
