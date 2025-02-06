@@ -2,6 +2,7 @@ usr/share/gnome-session/sessions/regolith-x11.session
 usr/share/xsessions
 usr/share/applications/regolith-x11.desktop
 usr/bin/regolith-session-x11
+usr/bin/regolith-session-trixie-x11
 usr/lib/systemd/user/regolith-x11.service
 usr/lib/systemd/user/regolith-x11.target
 usr/lib/systemd/user/gnome-session@regolith-x11.target.d
