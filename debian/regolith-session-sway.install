@@ -1,4 +1,5 @@
 usr/bin/regolith-session-wayland
+usr/bin/regolith-session-trixie-wayland
 usr/share/gnome-session/sessions/regolith-wayland.session
 usr/share/wayland-sessions
 usr/share/applications/regolith-wayland.desktop

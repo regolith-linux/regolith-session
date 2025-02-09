@@ -1,3 +1,10 @@
+regolith-session (1.1.13-2) trixie; urgency=medium
+
+  * fix: workaround trixie bug which causes desktop sessions to fail.  Addresses https://github.com/regolith-linux/regolith-desktop/issues/1104
+  * Add special workaround scripts to install
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 05 Feb 2025 18:28:40 -0800
+
 regolith-session (1.1.12-3) jammy; urgency=medium
 
   [ Khosrow Moossavi ]
