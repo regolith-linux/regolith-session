@@ -1,3 +1,10 @@
+regolith-session (1.1.14-3-debian-bookworm) jammy; urgency=medium
+
+  [ Khosrow Moossavi ]
+  * feat: use build-only to test pull request
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 14 Oct 2025 00:37:09 +0000
+
 regolith-session (1.1.13-3) jammy; urgency=medium
 
   * UNRELEASED
