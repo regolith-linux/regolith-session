@@ -68,6 +68,7 @@ Depends: ${misc:Depends},
     wl-clipboard,
     xwayland
 Recommends:
+    sway-audio-idle-inhibit,
     gnome-terminal,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
