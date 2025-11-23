@@ -68,12 +68,14 @@ Depends: ${misc:Depends},
     wl-clipboard,
     xwayland
 Recommends:
-    sway-audio-idle-inhibit,
+    sway-audio-idle-inhibit (>= 2.0.0),
     gnome-terminal,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
+Breaks: regolith-sway-audio-idle-inhibit
+Replaces: regolith-sway-audio-idle-inhibit
 Description: Regolith customized SwayWM session
  This package contains the desktop and wayland session configuration
  necessary to start a Regolith sway session.
