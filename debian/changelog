@@ -1,3 +1,11 @@
+regolith-session (1.1.15-4) trixie; urgency=medium
+
+  [ Khosrow Moossavi ]
+  * cherry pick from main to trixie (#58)
+  * feat: support trixie in a separate branch until upstream fix (#59)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 06 Dec 2025 23:57:58 +0000
+
 regolith-session (1.1.13-3) trixie; urgency=medium
 
   * UNRELEASED
