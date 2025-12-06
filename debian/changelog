@@ -1,3 +1,11 @@
+regolith-session (1.1.15-1) jammy; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * feat: sway-audio-idle-inhibit as recommends dependency
+  * chore: properly depricate regolith-sway-audio-idle-inhibit (#56)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 06 Dec 2025 16:54:10 +0000
+
 regolith-session (1.1.14-1) jammy; urgency=medium
 
   [ Khosrow Moossavi ]
