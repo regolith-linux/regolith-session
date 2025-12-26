@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Regolith / Wayland
 Comment=Productivity focused desktop environment
-Exec=/usr/bin/regolith-session regolith-wayland
-TryExec=/usr/bin/regolith-session
+Exec=/usr/bin/regolith-session-wayland-launch
+TryExec=/usr/bin/regolith-session-wayland-launch
 Type=Application

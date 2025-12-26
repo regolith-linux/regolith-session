@@ -1,0 +1,9 @@
+[Unit]
+Description=Regolith GNOME Session (X11)
+Requires=gnome-session@regolith-x11.target
+BindsTo=gnome-session@regolith-x11.target
+After=gnome-session@regolith-x11.target
+PartOf=gnome-session@regolith-x11.target
+
+[Install]
+WantedBy=gnome-session.target

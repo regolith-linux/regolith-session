@@ -2,6 +2,7 @@ usr/bin/regolith-session-wayland
 usr/share/gnome-session/sessions/regolith-wayland.session
 usr/share/wayland-sessions
 usr/share/applications/regolith-wayland.desktop
+usr/bin/regolith-session-wayland-launch
 usr/lib/systemd/user/regolith-wayland.service
 usr/lib/systemd/user/regolith-wayland.target
 usr/lib/systemd/user/gnome-session@regolith-wayland.target.d
