@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Regolith / X11
 Comment=Productivity focused desktop environment
-Exec=/usr/bin/regolith-session regolith-x11
-TryExec=/usr/bin/regolith-session
+Exec=/usr/bin/regolith-session-x11-launch
+TryExec=/usr/bin/regolith-session-x11-launch
 Type=Application
 DesktopNames=Regolith;GNOME-Flashback;GNOME

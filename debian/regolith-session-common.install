@@ -1,4 +1,3 @@
 usr/bin/regolith-diagnostic
 usr/lib/regolith/regolith-session-common.sh
 usr/bin/regolith-look
-usr/bin/regolith-session
