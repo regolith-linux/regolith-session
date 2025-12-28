@@ -1,0 +1,19 @@
+#!/bin/bash
+set -Eeu -o pipefail
+
+SESSION_TYPE="regolith-x11"
+
+if [ -z "${XDG_CURRENT_DESKTOP-}" ]; then
+    export XDG_CURRENT_DESKTOP="Regolith:GNOME-Flashback:GNOME"
+fi
+
+if [ -f /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    source /etc/os-release
+
+    if [[ "${VERSION_CODENAME-}" == "jammy" || "${VERSION_CODENAME-}" == "bookworm" ]]; then
+        exec gnome-session --builtin --session=$SESSION_TYPE --disable-acceleration-check "$@"
+    fi
+fi
+
+exec gnome-session --session=$SESSION_TYPE --disable-acceleration-check "$@"
