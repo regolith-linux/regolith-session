@@ -1,3 +1,10 @@
+regolith-session (1.2.0-1ubuntu1) noble; urgency=medium
+
+  [ Ken Gilmer ]
+  * refactor: x11 session to be launched by systemd. remove session launcher w parameters to fix x11 session
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sun, 28 Dec 2025 04:35:42 -0800
+
 regolith-session (1.1.15-1) jammy; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
