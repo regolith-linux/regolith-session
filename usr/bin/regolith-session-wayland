@@ -4,16 +4,25 @@
 set -Eeu -o pipefail
 source /usr/lib/regolith/regolith-session-common.sh
 
+# Try COSMIC session first
+if command -v cosmic-session >/dev/null 2>&1; then
+    export XDG_CURRENT_DESKTOP="Regolith:COSMIC"
+    export XDG_SESSION_TYPE="wayland"
+    
+    resolve_default_config_file
+    
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+        exec /usr/bin/dbus-run-session -- cosmic-session sway -c "$SWAY_CONFIG_FILE"
+    else
+        exec cosmic-session sway -c "$SWAY_CONFIG_FILE"
+    fi
+fi
+
 # Check if NOTIFY_SOCKET is available. This is used as a
 # test to see if the session uses systemd
 if [ -z "${NOTIFY_SOCKET-}" ]; then
   # Start trawl daemon manually
   trawld&
-
-  # Register with gnome-session so that it does not kill the whole session thinking it is dead.
-  if [ -n "${DESKTOP_AUTOSTART_ID-}" ]; then
-      dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
-  fi
 
   # Export environmentt from Environment.d
   while read -r l; do
@@ -46,16 +55,28 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
 fi
 
 # Set XDG_CURRENT_DESKTOP
-export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
+if command -v cosmic-session >/dev/null 2>&1; then
+    export XDG_CURRENT_DESKTOP="Regolith:COSMIC"
+else
+    export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
+fi
 
 # Start sway-regolith
 unsupported_gpu=$(trawlcat regolith.sway.unsupported_gpu false)
 echo "Regolith is launching Sway with $SWAY_CONFIG_FILE"
 
 if [[ "${unsupported_gpu,,}" == "true" ]]; then
-    sway -c "$SWAY_CONFIG_FILE" --unsupported-gpu
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+        exec /usr/bin/dbus-run-session -- cosmic-session sway -c "$SWAY_CONFIG_FILE" --unsupported-gpu
+    else
+        sway -c "$SWAY_CONFIG_FILE" --unsupported-gpu
+    fi
 else
-    sway -c "$SWAY_CONFIG_FILE" 
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS}" ]]; then
+        exec /usr/bin/dbus-run-session -- cosmic-session sway -c "$SWAY_CONFIG_FILE"
+    else
+        sway -c "$SWAY_CONFIG_FILE"
+    fi
 fi
 
 # Run user's post logout script if script. Post logout means that the wayland session has been terminated.
