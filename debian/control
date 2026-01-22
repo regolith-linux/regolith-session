@@ -10,6 +10,7 @@ Vcs-Git: https://github.com/regolith-linux/regolith-desktop.git
 Package: regolith-session-flashback
 Architecture: any
 Depends: ${misc:Depends},
+    i3-wm,
     dbus,
     gnome-flashback,
     gnome-session-bin,
