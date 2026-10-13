@@ -36,6 +36,9 @@ EnvironmentFile=-%h/.config/regolith3/i3/env
 
 # On X11 we want to restart on-success and on-failure.
 Restart=always
+# Restart without passing through the failed state, so OnFailure= only runs
+# once the start limit is hit (systemd 254 and newer)
+RestartMode=direct
 # Do not wait before restarting the shell
 RestartSec=0ms
 # Kill any stubborn child processes after this long
