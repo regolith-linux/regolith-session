@@ -101,4 +101,23 @@ expect() { # expect <unit> <directive> <dependency>
 # GTK applications never receive the Regolith look over XSETTINGS.
 expect gnome-session@regolith-x11.target Requires gnome-session-x11-services-ready.target
 
+# gnome-session 49 and newer no longer start these from autostart files; the
+# session target has to pull them in, as GNOME Flashback's own session does.
+# On releases without the units the Wants= are no-ops.
+expect gnome-session@regolith-x11.target Wants gnome-flashback-polkit.service
+expect gnome-session@regolith-x11.target Wants gnome-flashback-idle-monitor.service
+
+# 4. Every OnFailure= handler must exist on this release; systemd only logs
+#    "not found" when it cannot enqueue one, and the failure goes unhandled.
+for unit in $units; do
+    for handler in $(deps "$unit" OnFailure); do
+        if unit_cat "$handler" >/dev/null 2>&1; then
+            echo "ok: $unit OnFailure=$handler exists"
+        else
+            echo "FAIL: $unit OnFailure=$handler not found"
+            fail=1
+        fi
+    done
+done
+
 exit $fail
