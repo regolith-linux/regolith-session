@@ -1,0 +1,8 @@
+Tests: units
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         systemd,
+         gnome-session-common,
+         gnome-settings-daemon,
+         desktop-file-utils
+Restrictions: allow-stderr
