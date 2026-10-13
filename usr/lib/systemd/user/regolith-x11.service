@@ -1,7 +1,8 @@
 [Unit]
 Description=Regolith Session for i3
-# On X11, try to show the GNOME Session Failed screen
-OnFailure=gnome-session-failed.target
+# On X11, show the GNOME Session Failed screen where gnome-session still has
+# one, otherwise end the session (see regolith-x11-failed.service)
+OnFailure=regolith-x11-failed.service
 OnFailureJobMode=replace
 CollectMode=inactive-or-failed
 RefuseManualStart=on

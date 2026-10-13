@@ -1,0 +1,13 @@
+[Unit]
+Description=Handle a failed Regolith X11 session
+# gnome-session 48 and older ship gnome-session-failed.target, which shows the
+# "Oh no! Something has gone wrong" screen and then ends the session.
+# gnome-session 49 and newer dropped it; there the session ends directly,
+# as gnome-session's own units do.
+DefaultDependencies=no
+CollectMode=inactive-or-failed
+RefuseManualStart=on
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'if [ "$$(systemctl --user show --property=LoadState --value gnome-session-failed.target)" = loaded ]; then exec systemctl --user start --no-block --job-mode=replace gnome-session-failed.target; else exec systemctl --user start --no-block --job-mode=replace-irreversibly gnome-session-shutdown.target; fi'
