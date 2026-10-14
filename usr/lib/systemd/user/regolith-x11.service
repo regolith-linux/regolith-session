@@ -1,7 +1,8 @@
 [Unit]
 Description=Regolith Session for i3
-# On X11, try to show the GNOME Session Failed screen
-OnFailure=gnome-session-failed.target
+# On X11, show the GNOME Session Failed screen where gnome-session still has
+# one, otherwise end the session (see regolith-x11-failed.service)
+OnFailure=regolith-x11-failed.service
 OnFailureJobMode=replace
 CollectMode=inactive-or-failed
 RefuseManualStart=on
@@ -36,6 +37,9 @@ EnvironmentFile=-%h/.config/regolith3/i3/env
 
 # On X11 we want to restart on-success and on-failure.
 Restart=always
+# Restart without passing through the failed state, so OnFailure= only runs
+# once the start limit is hit (systemd 254 and newer)
+RestartMode=direct
 # Do not wait before restarting the shell
 RestartSec=0ms
 # Kill any stubborn child processes after this long

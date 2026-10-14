@@ -1,0 +1,123 @@
+#!/bin/sh
+# Static checks for the systemd user units and session entries shipped by
+# regolith-session, plus the dependencies the X11 session needs at runtime.
+set -eu
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-${AUTOPKGTEST_TMP:-/tmp}/xdg-runtime}"
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+fail=0
+unit_dirs="/etc/systemd/user /usr/local/lib/systemd/user /usr/lib/systemd/user"
+
+# 1. Every user unit the binary packages ship. A drop-in is verified through
+#    the unit it extends, so the merged configuration is what gets checked.
+units=$(dpkg -L regolith-session-common regolith-session-flashback \
+            regolith-session-flashback-ext regolith-session-sway 2>/dev/null \
+        | sed -n 's|^/usr/lib/systemd/user/||p' \
+        | sed -n -e 's|^\([^/]*\)\.d/[^/]*\.conf$|\1|p' \
+                 -e 's#^\([^/]*\.\(service\|target\|socket\|timer\|path\)\)$#\1#p' \
+        | sort -u)
+if [ -z "$units" ]; then
+    echo "FAIL: no systemd user units found in the installed packages"
+    exit 1
+fi
+for unit in $units; do
+    echo "systemd-analyze verify --user $unit"
+    if ! systemd-analyze verify --user "$unit"; then
+        echo "FAIL: $unit"
+        fail=1
+    fi
+done
+
+# 2. Session entries. DesktopNames is a display-manager key that
+#    desktop-file-validate does not know; that one diagnostic is tolerated.
+for entry in /usr/share/xsessions/regolith-x11.desktop \
+             /usr/share/wayland-sessions/regolith-wayland.desktop; do
+    echo "desktop-file-validate $entry"
+    out=$(desktop-file-validate "$entry" 2>&1) || true
+    rest=$(printf '%s\n' "$out" | grep -v '"DesktopNames"' | grep -v '^$' || true)
+    if [ -n "$rest" ]; then
+        printf '%s\n' "$rest"
+        echo "FAIL: $entry"
+        fail=1
+    fi
+done
+
+# 3. Dependencies of the effective X11 session target.
+#
+# unit_cat prints a user unit the way systemd assembles it: the unit file (or
+# its template), then the drop-ins of the template and of the instance,
+# ordered by file name, an earlier directory masking a later one. It reads
+# the files directly because "systemctl --user cat" needs a running user
+# manager on older systemd versions.
+unit_cat() { # unit_cat <unit>
+    name=$1
+    template=
+    case $name in
+        *@?*.*) template="${name%%@*}@.${name##*.}" ;;
+    esac
+    main=
+    for n in "$name" $template; do
+        for d in $unit_dirs; do
+            if [ -f "$d/$n" ]; then
+                main="$d/$n"
+                break 2
+            fi
+        done
+    done
+    [ -n "$main" ] || return 1
+    cat "$main"
+    prio=0
+    for d in $unit_dirs; do
+        prio=$((prio + 1))
+        for n in $template "$name"; do
+            for f in "$d/$n.d"/*.conf; do
+                [ -f "$f" ] && printf '%s %s %s\n' "${f##*/}" "$prio" "$f"
+            done
+        done
+    done | sort -k1,1 -k2,2n | awk '$1 != last { print $3; last = $1 }' \
+         | while read -r f; do cat "$f"; echo; done
+}
+# deps prints a [Unit] list directive with systemd's semantics: values
+# accumulate and an empty assignment resets the list.
+deps() { # deps <unit> <directive>
+    unit_cat "$1" | awk -v key="$2=" '
+        /^\[/ { section = $0; next }
+        section == "[Unit]" && index($0, key) == 1 {
+            value = substr($0, length(key) + 1)
+            list = (value == "") ? "" : list " " value
+        }
+        END { print list }'
+}
+expect() { # expect <unit> <directive> <dependency>
+    case " $(deps "$1" "$2") " in
+        *" $3 "*) echo "ok: $1 $2=$3" ;;
+        *) echo "FAIL: $1 lacks $2=$3"; fail=1 ;;
+    esac
+}
+
+# gsd-xsettings has Requisite= on gnome-session's X11 services; without this
+# GTK applications never receive the Regolith look over XSETTINGS.
+expect gnome-session@regolith-x11.target Requires gnome-session-x11-services-ready.target
+
+# gnome-session 49 and newer no longer start these from autostart files; the
+# session target has to pull them in, as GNOME Flashback's own session does.
+# On releases without the units the Wants= are no-ops.
+expect gnome-session@regolith-x11.target Wants gnome-flashback-polkit.service
+expect gnome-session@regolith-x11.target Wants gnome-flashback-idle-monitor.service
+
+# 4. Every OnFailure= handler must exist on this release; systemd only logs
+#    "not found" when it cannot enqueue one, and the failure goes unhandled.
+for unit in $units; do
+    for handler in $(deps "$unit" OnFailure); do
+        if unit_cat "$handler" >/dev/null 2>&1; then
+            echo "ok: $unit OnFailure=$handler exists"
+        else
+            echo "FAIL: $unit OnFailure=$handler not found"
+            fail=1
+        fi
+    done
+done
+
+exit $fail
