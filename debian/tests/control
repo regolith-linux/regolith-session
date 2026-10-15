@@ -7,3 +7,12 @@ Depends: regolith-session-flashback,
          gnome-settings-daemon,
          desktop-file-utils
 Restrictions: allow-stderr
+
+Tests: x11-workspace-names
+Depends: regolith-session-flashback,
+         regolith-look-default,
+         i3-wm,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr

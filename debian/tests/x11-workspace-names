@@ -1,0 +1,57 @@
+#!/bin/sh
+# The X11 login path must leave workspace names in a form i3 can parse, as
+# 'regolith-look refresh' does: looks define them with double quotes
+# (regolith-desktop#890). Runs regolith-session-x11 under Xvfb with i3
+# wrapped so that it stops after a few seconds.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
+export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
+mkdir -p "$HOME/.config/regolith3/i3/config.d" "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+
+Xvfb :99 -screen 0 1280x800x24 -nolisten tcp -noreset >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+export DISPLAY=:99
+for _ in 1 2 3 4 5 6 7 8 9 10; do xrdb -query >/dev/null 2>&1 && break; sleep 0.5; done
+
+# 1. xres_i3_cleanup with no workspace names defined must not stop a caller
+#    that runs with "set -e -o pipefail" (the login path does).
+if out=$(bash -c 'set -Eeu -o pipefail
+                  . /usr/lib/regolith/regolith-session-common.sh
+                  xres_i3_cleanup
+                  echo reached' 2>&1) && [ "$out" = reached ]; then
+    echo "ok: xres_i3_cleanup without workspace names"
+else
+    printf '%s\n' "$out"
+    echo "FAIL: xres_i3_cleanup ended a set -e caller when no workspace names exist"
+    fail=1
+fi
+
+# 2. The login path with a user partial that assigns a workspace to an output.
+# shellcheck disable=SC2016 # $ws1 is for i3 to expand
+printf 'workspace "$ws1" output screen\n' > "$HOME/.config/regolith3/i3/config.d/99_ws"
+cat > "$tmp/bin/i3" <<'STUB'
+#!/bin/sh
+# "i3 -C" cannot check this: it does not read X resources. Run i3 briefly;
+# it reports configuration errors on stderr while loading the file.
+timeout 5 /usr/bin/i3 "$@" || true
+STUB
+chmod +x "$tmp/bin/i3"
+# NOTIFY_SOCKET marks the systemd-managed session (regolith-x11.service), which
+# keeps PATH; the non-systemd branch would reset it from environment.d.
+if NOTIFY_SOCKET="$tmp/notify" PATH="$tmp/bin:$PATH" \
+   timeout 120 dbus-run-session -- regolith-session-x11 >"$tmp/session.log" 2>&1 \
+   && ! grep -q 'ERROR: CONFIG' "$tmp/session.log"; then
+    echo "ok: i3 accepts the configuration the X11 login path hands it"
+else
+    grep -E 'ERROR|launching' "$tmp/session.log" || cat "$tmp/session.log"
+    echo "FAIL: i3 configuration errors at X11 login"
+    fail=1
+fi
+xrdb -query | grep 'wm.workspace.01.name' || true
+
+exit $fail
