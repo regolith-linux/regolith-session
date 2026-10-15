@@ -94,5 +94,6 @@ Architecture: any
 Depends: ${misc:Depends}
 Conflicts: gnome-session-flashback, regolith-session-flashback (<= 0.9.3)
 Description: Additional files for regolith X11 session
- This package contains the idle monitor autostart desktop file.
+ This package contains the idle monitor and polkit agent autostart desktop
+ files for GNOME Flashback releases that still start them from autostart.
 

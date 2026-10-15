@@ -30,10 +30,12 @@ for unit in $units; do
     fi
 done
 
-# 2. Session entries. DesktopNames is a display-manager key that
+# 2. Session and autostart entries. DesktopNames is a display-manager key that
 #    desktop-file-validate does not know; that one diagnostic is tolerated.
 for entry in /usr/share/xsessions/regolith-x11.desktop \
-             /usr/share/wayland-sessions/regolith-wayland.desktop; do
+             /usr/share/wayland-sessions/regolith-wayland.desktop \
+             /etc/xdg/autostart/gnome-flashback-idle-monitor.desktop \
+             /etc/xdg/autostart/gnome-flashback-polkit.desktop; do
     echo "desktop-file-validate $entry"
     out=$(desktop-file-validate "$entry" 2>&1) || true
     rest=$(printf '%s\n' "$out" | grep -v '"DesktopNames"' | grep -v '^$' || true)

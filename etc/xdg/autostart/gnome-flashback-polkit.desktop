@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Polkit (GNOME Flashback)
+Exec=/usr/libexec/gnome-flashback-polkit
+TryExec=/usr/libexec/gnome-flashback-polkit
+AutostartCondition=GSettings org.gnome.gnome-flashback polkit
+OnlyShowIn=GNOME-Flashback;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true
