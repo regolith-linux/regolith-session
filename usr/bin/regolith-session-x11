@@ -39,6 +39,7 @@ fi
 gdm3_xrdb_fixup     # Remove when https://bugs.launchpad.net/ubuntu/+source/gdm3/+bug/1955850 is fixed
 load_standard_xres  # ~/.Xresources
 load_regolith_xres  # ~/.config/regolith3/Xresources
+xres_i3_cleanup     # Single-quote workspace names for i3, as 'regolith-look refresh' does
 
 UPDATE_FLAG_DIR="$HOME/.config/regolith3/flags"
 if [ ! -e "$UPDATE_FLAG_DIR" ]; then
