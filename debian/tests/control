@@ -1,5 +1,6 @@
 Tests: units
 Depends: regolith-session-flashback,
+         regolith-session-flashback-ext,
          regolith-session-sway,
          systemd,
          gnome-session-common,
