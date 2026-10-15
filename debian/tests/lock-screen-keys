@@ -1,0 +1,59 @@
+#!/bin/sh
+# The Regolith key theme must stop the password entry of the GNOME Flashback
+# unlock dialog from opening its context menu from the keyboard: the menu
+# takes the lock screen's grab and drops it, letting input reach the windows
+# behind the lock screen (regolith-desktop#916, regolith-session#18).
+# Entries elsewhere must keep the default bindings.
+set -eu
+
+fail=0
+
+theme=$(GSETTINGS_BACKEND=memory XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
+        gsettings get org.gnome.desktop.interface gtk-key-theme)
+echo "gtk-key-theme in the Regolith desktop: $theme"
+[ "$theme" = "'Regolith'" ] || { echo "FAIL: gsettings override"; fail=1; }
+
+ini=/etc/xdg/xdg-regolith-x11/gtk-3.0/settings.ini
+grep -Eq '^gtk-key-theme-name *= *Regolith$' "$ini" \
+    || { echo "FAIL: $ini does not select the Regolith key theme"; fail=1; }
+
+xvfb-run -a python3 - <<'EOF' || fail=1
+import sys
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, Gtk
+
+
+class UnlockDialog(Gtk.Box):
+    __gtype_name__ = "TestUnlockDialog"
+
+
+UnlockDialog.set_css_name("gf-unlock-dialog")
+Gtk.Settings.get_default().props.gtk_key_theme_name = "Regolith"
+
+
+def popups(parent):
+    window = Gtk.OffscreenWindow()
+    entry = Gtk.Entry()
+    parent.add(entry)
+    window.add(parent)
+    window.show_all()
+    hits = []
+    entry.connect("popup-menu", lambda widget: hits.append(widget) or True)
+    for keyval, state in ((Gdk.KEY_Menu, 0),
+                          (Gdk.KEY_F10, Gdk.ModifierType.SHIFT_MASK)):
+        Gtk.bindings_activate(entry, keyval, state)
+    window.destroy()
+    return len(hits)
+
+
+unlock, other = popups(UnlockDialog()), popups(Gtk.Box())
+print(f"popup-menu emissions: unlock dialog entry {unlock}, other entry {other}")
+if other != 2:
+    sys.exit("FAIL: a plain entry no longer opens its menu from the keyboard")
+if unlock != 0:
+    sys.exit("FAIL: the unlock dialog entry still opens its menu from the keyboard")
+EOF
+
+exit $fail

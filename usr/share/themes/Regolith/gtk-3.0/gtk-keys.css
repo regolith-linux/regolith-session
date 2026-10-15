@@ -1,0 +1,19 @@
+/*
+ * Regolith GTK 3 key theme.
+ *
+ * The X11 session locks the screen with the GNOME Flashback screensaver.
+ * Its password entry opens a context menu on the Menu key or Shift+F10;
+ * the menu takes over the lock screen's keyboard and pointer grab and
+ * drops it when it closes, after which input reaches the windows behind
+ * the still visible lock screen (regolith-desktop#916,
+ * regolith-session#18). Unbind those keys in the unlock dialog only;
+ * everywhere else GTK's default key bindings apply unchanged.
+ */
+@binding-set regolith-unlock-dialog-entry {
+  unbind "Menu";
+  unbind "<Shift>F10";
+}
+
+gf-unlock-dialog entry {
+  -gtk-key-bindings: regolith-unlock-dialog-entry;
+}

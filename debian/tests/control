@@ -16,3 +16,13 @@ Depends: regolith-session-flashback,
          xvfb,
          x11-xserver-utils
 Restrictions: allow-stderr
+
+Tests: lock-screen-keys
+Depends: regolith-session-flashback,
+         gsettings-desktop-schemas,
+         libglib2.0-bin,
+         gir1.2-gtk-3.0,
+         python3-gi,
+         xauth,
+         xvfb
+Restrictions: allow-stderr
