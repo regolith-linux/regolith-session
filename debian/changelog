@@ -1,3 +1,13 @@
+regolith-session (1.2.1-1) noble; urgency=medium
+
+  [ Soumya Ranjan Patnaik ]
+  * fix: add missing i3-wm dependency (#61)
+
+  [ Carlos Fernandez Sanz ]
+  * X11 session on Ubuntu 26.04+: start the polkit agent and idle monitor, handle session failures (#64)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 14 Oct 2026 10:23:42 -0700
+
 regolith-session (1.2.0-1ubuntu1) noble; urgency=medium
 
   [ Ken Gilmer ]
