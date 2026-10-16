@@ -1,0 +1,3 @@
+# Lock screen hardening, see /usr/share/themes/Regolith/gtk-3.0/gtk-keys.css
+[org.gnome.desktop.interface:Regolith]
+gtk-key-theme='Regolith'
