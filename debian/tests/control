@@ -8,6 +8,13 @@ Depends: regolith-session-flashback,
          desktop-file-utils
 Restrictions: allow-stderr
 
+Tests: initial-setup
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         gnome-initial-setup,
+         systemd
+Restrictions: allow-stderr
+
 Tests: x11-workspace-names
 Depends: regolith-session-flashback,
          regolith-look-default,
