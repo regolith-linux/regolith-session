@@ -10,3 +10,5 @@ usr/lib/systemd/user/gnome-session@regolith-x11.target.d
 usr/lib/systemd/user/gnome-session-x11@regolith-x11.target
 usr/share/themes/Regolith
 etc/xdg/xdg-regolith-x11
+usr/lib/systemd/user/gnome-initial-setup-first-login.service.d/regolith-x11.conf
+usr/lib/systemd/user/gnome-initial-setup-upgrade-login.service.d/regolith-x11.conf

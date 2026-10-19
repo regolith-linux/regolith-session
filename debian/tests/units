@@ -23,6 +23,11 @@ if [ -z "$units" ]; then
     exit 1
 fi
 for unit in $units; do
+    case $unit in
+        gnome-initial-setup-*)
+            # Drop-ins for another package's units; see the initial-setup test.
+            continue ;;
+    esac
     echo "systemd-analyze verify --user $unit"
     if ! systemd-analyze verify --user "$unit"; then
         echo "FAIL: $unit"

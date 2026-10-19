@@ -1,0 +1,54 @@
+#!/bin/sh
+# GNOME Initial Setup's first-login and upgrade wizards must not start in the
+# Regolith sessions, and must still start in GNOME sessions. Evaluates the
+# units' conditions, including Regolith's drop-ins, as the user manager would
+# for each session.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+# A configuration directory without the wizards' stamp files.
+export XDG_CONFIG_HOME="$tmp/config" XDG_SESSION_CLASS=user
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$tmp/xdg-runtime}"
+mkdir -p "$XDG_CONFIG_HOME" "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+checked=0
+
+for unit in gnome-initial-setup-first-login.service \
+            gnome-initial-setup-upgrade-login.service; do
+    if [ ! -f "/usr/lib/systemd/user/$unit" ]; then
+        echo "skip: $unit is not installed on this release"
+        continue
+    fi
+    checked=$((checked + 1))
+    for desktop in regolith-x11 regolith-wayland ubuntu gnome; do
+        out=$(XDG_SESSION_DESKTOP=$desktop \
+              systemd-analyze condition --user --unit="$unit" 2>&1) || true
+        case $desktop in
+            regolith-*)
+                if printf '%s\n' "$out" | grep -q "XDG_SESSION_DESKTOP=$desktop failed"; then
+                    echo "ok: $unit does not start in $desktop"
+                else
+                    printf '%s\n' "$out"
+                    echo "FAIL: $unit would start in $desktop"
+                    fail=1
+                fi ;;
+            *)
+                # Only Regolith's conditions are checked here: as root,
+                # ConditionUser=!@system fails for any session.
+                if printf '%s\n' "$out" | grep -q 'XDG_SESSION_DESKTOP=regolith-.* failed'; then
+                    printf '%s\n' "$out"
+                    echo "FAIL: Regolith's drop-ins stop $unit in $desktop"
+                    fail=1
+                else
+                    echo "ok: Regolith's drop-ins leave $unit to run in $desktop"
+                fi ;;
+        esac
+    done
+done
+
+if [ "$checked" -eq 0 ]; then
+    echo "FAIL: no GNOME Initial Setup unit found"
+    fail=1
+fi
+exit $fail
