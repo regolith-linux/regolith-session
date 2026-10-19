@@ -1,0 +1,10 @@
+# Ubuntu's and Debian's picom packages start picom in every desktop from
+# /etc/xdg/autostart/picom.desktop. picom is an X11 compositor and has no
+# place in the sway session, so hide that entry there. The directory is on
+# XDG_CONFIG_DIRS only in the regolith-wayland session (see
+# regolith-session-wayland-launch).
+[Desktop Entry]
+Type=Application
+Name=picom
+Exec=picom
+Hidden=true

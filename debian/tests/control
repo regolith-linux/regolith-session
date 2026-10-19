@@ -26,3 +26,9 @@ Depends: regolith-session-flashback,
          xauth,
          xvfb
 Restrictions: allow-stderr
+
+Tests: picom-autostart
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         desktop-file-utils
+Restrictions: allow-stderr
