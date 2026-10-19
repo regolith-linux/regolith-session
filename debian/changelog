@@ -1,3 +1,12 @@
+regolith-session (1.2.2-1) noble; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * fix: start the GNOME Flashback polkit agent from autostart where it has no unit (#66)
+  * fix: clean up workspace names at X11 login as regolith-look refresh does (#68)
+  * fix: keep the X11 lock screen's context menu closed from the keyboard (#69)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 19 Oct 2026 16:10:43 -0700
+
 regolith-session (1.2.1-1) noble; urgency=medium
 
   [ Soumya Ranjan Patnaik ]
@@ -685,7 +694,7 @@ regolith-session (0.2.1-1) focal; urgency=medium
 
 regolith-session (0.2.0-1) focal; urgency=medium
 
-  * Update Xresource loading heursitics 
+  * Update Xresource loading heursitics
 
  -- Regolith Linux <regolith.linux@gmail.com>  Sun, 17 Jan 2021 08:32:39 -0800
 
