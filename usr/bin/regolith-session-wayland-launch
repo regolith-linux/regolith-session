@@ -3,6 +3,15 @@ set -Eeu -o pipefail
 
 SESSION_TYPE="regolith-wayland"
 
+# Session-scoped XDG configuration, such as the autostart entries hidden in
+# this session, lives in /etc/xdg/xdg-$SESSION_TYPE. Ubuntu's Xsession and
+# profile scripts put it first in XDG_CONFIG_DIRS; do the same where they
+# don't run (Debian, other display managers) so gnome-session sees it.
+case ":${XDG_CONFIG_DIRS-}:" in
+    *":/etc/xdg/xdg-$SESSION_TYPE:"*) ;;
+    *) export XDG_CONFIG_DIRS="/etc/xdg/xdg-$SESSION_TYPE:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
+esac
+
 if [ -f /etc/os-release ]; then
     # shellcheck disable=SC1091
     source /etc/os-release

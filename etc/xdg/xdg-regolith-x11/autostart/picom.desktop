@@ -1,0 +1,10 @@
+# Ubuntu's and Debian's picom packages start picom in every desktop from
+# /etc/xdg/autostart/picom.desktop. In Regolith the compositor is chosen
+# with the regolith-compositor-* packages and started by i3, so hide that
+# entry in this session. The directory is on XDG_CONFIG_DIRS only in the
+# regolith-x11 session (see regolith-session-x11-launch).
+[Desktop Entry]
+Type=Application
+Name=picom
+Exec=picom
+Hidden=true

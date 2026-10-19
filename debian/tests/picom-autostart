@@ -1,0 +1,81 @@
+#!/bin/sh
+# Ubuntu's and Debian's picom start picom from /etc/xdg/autostart/picom.desktop
+# in every desktop, against the user's regolith-compositor-* choice. Each
+# Regolith session hides that entry with a same-named one in its
+# /etc/xdg/xdg-<session> directory, which its launcher must put on
+# XDG_CONFIG_DIRS ahead of /etc/xdg before gnome-session starts.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+stub="$tmp/stub"
+mkdir -p "$stub"
+# Stands in for gnome-session: report the environment the launcher hands over.
+cat > "$stub/gnome-session" <<'STUB'
+#!/bin/sh
+echo "${XDG_CONFIG_DIRS-(unset)}"
+STUB
+chmod +x "$stub/gnome-session"
+fail=0
+
+# first_autostart <dirs> <name>: the entry that wins under the XDG Autostart
+# specification, i.e. the first <dir>/autostart/<name> in XDG_CONFIG_DIRS.
+first_autostart() {
+    old_ifs=$IFS
+    IFS=:
+    for dir in $1; do
+        if [ -f "$dir/autostart/$2" ]; then
+            IFS=$old_ifs
+            echo "$dir/autostart/$2"
+            return
+        fi
+    done
+    IFS=$old_ifs
+}
+
+for session in regolith-x11 regolith-wayland; do
+    launcher=/usr/bin/regolith-session-${session#regolith-}-launch
+    dir=/etc/xdg/xdg-$session
+    entry=$dir/autostart/picom.desktop
+
+    echo "desktop-file-validate $entry"
+    if ! desktop-file-validate "$entry"; then
+        echo "FAIL: $entry"
+        fail=1
+    fi
+    if ! grep -qx 'Hidden=true' "$entry"; then
+        echo "FAIL: $entry does not hide picom"
+        fail=1
+    fi
+
+    # XDG_CONFIG_DIRS as the display manager may pass it, and what the
+    # launcher must hand to gnome-session.
+    for case in "unset|$dir:/etc/xdg" \
+                "/etc/xdg|$dir:/etc/xdg" \
+                "/opt/site/xdg:/etc/xdg|$dir:/opt/site/xdg:/etc/xdg" \
+                "$dir:/etc/xdg|$dir:/etc/xdg"; do
+        given=${case%%|*}
+        want=${case#*|}
+        if [ "$given" = unset ]; then
+            got=$(env -u XDG_CONFIG_DIRS PATH="$stub:$PATH" "$launcher")
+        else
+            got=$(env XDG_CONFIG_DIRS="$given" PATH="$stub:$PATH" "$launcher")
+        fi
+        if [ "$got" = "$want" ]; then
+            echo "ok: $session, XDG_CONFIG_DIRS $given -> $got"
+        else
+            echo "FAIL: $session, XDG_CONFIG_DIRS $given -> $got, want $want"
+            fail=1
+        fi
+    done
+
+    got=$(env -u XDG_CONFIG_DIRS PATH="$stub:$PATH" "$launcher")
+    winner=$(first_autostart "$got" picom.desktop)
+    if [ "$winner" = "$entry" ]; then
+        echo "ok: $session autostarts picom from $winner (hidden)"
+    else
+        echo "FAIL: $session autostarts picom from ${winner:-nowhere}, want $entry"
+        fail=1
+    fi
+done
+
+exit $fail
