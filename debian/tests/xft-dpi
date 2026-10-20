@@ -1,0 +1,141 @@
+#!/bin/sh
+# In the X11 session gsd-xsettings replaces Xft.dpi with its own value. An
+# Xft.dpi in the user's Xresources must still reach Xft (X resources) and GTK
+# (XSETTINGS) applications, through text-scaling-factor. Runs gsd-xsettings
+# under Xvfb with a stand-in for GNOME Flashback's UI scale.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
+mkdir -p "$HOME/.config/regolith3" "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+export DISPLAY=":$display"
+
+# org.gnome.Mutter.X11 as GNOME Flashback provides it: UiScalingFactor only.
+cat > "$tmp/ui-scale.py" <<'EOF'
+import sys
+import warnings
+from gi.repository import Gio, GLib
+warnings.simplefilter('ignore', DeprecationWarning)  # register_object
+xml = ('<node><interface name="org.gnome.Mutter.X11">'
+       '<property name="UiScalingFactor" type="i" access="read"/>'
+       '</interface></node>')
+iface = Gio.DBusNodeInfo.new_for_xml(xml).interfaces[0]
+def bus_acquired(conn, name):
+    conn.register_object('/org/gnome/Mutter/X11', iface, None,
+                         lambda *a: GLib.Variant('i', int(sys.argv[1])), None)
+Gio.bus_own_name(Gio.BusType.SESSION, 'org.gnome.Mutter.X11',
+                 Gio.BusNameOwnerFlags.NONE, bus_acquired, None, None)
+GLib.MainLoop().run()
+EOF
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/bash
+set -Eeu -o pipefail
+. /usr/lib/regolith/regolith-session-common.sh
+fail=0
+pids=()
+trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT
+
+start_session() { # start_session <UI scale>: Flashback's scale, gsd-xsettings
+    kill "${pids[@]}" 2>/dev/null || true
+    wait 2>/dev/null || true
+    python3 "$AUTOPKGTEST_TMP/ui-scale.py" "$1" & pids=($!)
+    gdbus wait --session --timeout 10 org.gnome.Mutter.X11
+    /usr/libexec/gsd-xsettings >"$AUTOPKGTEST_TMP/gsd.log" 2>&1 & pids+=($!)
+    gdbus wait --session --timeout 10 org.gnome.SettingsDaemon.XSettings
+    sleep 2
+}
+xrdb_dpi() { xrdb -query | sed -n 's/^Xft\.dpi:\t//p'; }
+gtk_dpi() {
+    python3 -c 'import gi; gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+print(round(Gtk.Settings.get_default().props.gtk_xft_dpi / 1024))'
+}
+login() { # login: what the X11 login path does with the user's files
+    load_standard_xres
+    if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+    fi
+    apply_user_xft_dpi
+    sleep 2
+}
+expect() { # expect <what> <dpi>
+    local x g
+    x=$(xrdb_dpi); g=$(gtk_dpi)
+    if [ "$x" = "$2" ] && [ "$g" = "$2" ]; then
+        echo "ok: $1: Xft.dpi $x, GTK $g dpi"
+    else
+        echo "FAIL: $1: Xft.dpi $x, GTK $g dpi, expected $2"
+        fail=1
+    fi
+}
+factor() { gsettings get org.gnome.desktop.interface text-scaling-factor; }
+
+start_session 1
+login
+expect "no Xft.dpi set" 96
+
+echo 'Xft.dpi: 110' > "$USER_XRESOURCE_OVERRIDE_FILE"
+login
+expect "Xft.dpi: 110 in the Regolith Xresources" 110
+
+# gsd-xsettings rewrites the X resources on any change of its settings.
+gsettings set org.gnome.desktop.interface cursor-size 32
+sleep 2
+expect "after gsd-xsettings updated its settings" 110
+
+rm "$USER_XRESOURCE_OVERRIDE_FILE"
+echo 'Xft.dpi: 120' > "$HOME/.Xresources"
+login
+expect "Xft.dpi: 120 in ~/.Xresources" 120
+
+rm "$HOME/.Xresources"
+login
+expect "Xft.dpi removed again" 96
+if [ "$(factor)" = 1.0 ]; then
+    echo "ok: text-scaling-factor reset"
+else
+    echo "FAIL: text-scaling-factor is $(factor) after Xft.dpi was removed"
+    fail=1
+fi
+
+# A factor the user changed elsewhere stays when Xft.dpi is removed.
+echo 'Xft.dpi: 110' > "$USER_XRESOURCE_OVERRIDE_FILE"
+login
+gsettings set org.gnome.desktop.interface text-scaling-factor 1.25
+rm "$USER_XRESOURCE_OVERRIDE_FILE"
+login
+if [ "$(factor)" = 1.25 ]; then
+    echo "ok: a text-scaling-factor set elsewhere is kept"
+else
+    echo "FAIL: text-scaling-factor $(factor), expected the user's 1.25"
+    fail=1
+fi
+gsettings reset org.gnome.desktop.interface text-scaling-factor
+
+# With a UI scale of 2 (HiDPI), Xft.dpi is the scaled value, as without
+# gsd-xsettings: 192 needs no extra text scaling. GTK scales its windows
+# instead and reports the unscaled DPI, so only the X resource is checked.
+start_session 2
+echo 'Xft.dpi: 192' > "$USER_XRESOURCE_OVERRIDE_FILE"
+login
+if [ "$(xrdb_dpi)" = 192 ] && [ "$(factor)" = 1.0 ]; then
+    echo "ok: Xft.dpi: 192 with a UI scale of 2 needs no text scaling"
+else
+    echo "FAIL: UI scale 2: Xft.dpi $(xrdb_dpi), text-scaling-factor $(factor)"
+    fail=1
+fi
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run"

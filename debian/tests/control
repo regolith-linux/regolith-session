@@ -39,3 +39,38 @@ Depends: regolith-session-flashback,
          regolith-session-sway,
          desktop-file-utils
 Restrictions: allow-stderr
+
+Tests: xft-dpi
+Depends: regolith-session-common,
+         gnome-settings-daemon,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         libglib2.0-bin,
+         dbus,
+         gir1.2-gtk-3.0,
+         python3-gi,
+         x11-xserver-utils,
+         xvfb
+Restrictions: allow-stderr
+
+Tests: look-first-login
+Depends: regolith-session-flashback,
+         regolith-look-default,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         libglib2.0-bin,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr
+
+Tests: look-default
+Depends: regolith-session-common,
+         xrescat,
+         x11-xserver-utils,
+         xvfb,
+         dbus,
+         trawld,
+         trawldb,
+         trawlcat
+Restrictions: needs-root, allow-stderr

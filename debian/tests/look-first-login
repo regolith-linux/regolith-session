@@ -1,0 +1,76 @@
+#!/bin/sh
+# The X11 login path applies the look's desktop settings (GTK theme, fonts,
+# wallpaper) at the first login only. Later logins must keep what the user
+# changed since, such as the wallpaper; 'regolith-look refresh' still applies
+# the look. Runs regolith-session-x11 under Xvfb with i3 stubbed out, three
+# times for three logins of one user.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
+export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
+mkdir -p "$HOME/.config/regolith3" "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+# The default look sets a plain color as wallpaper, so picture-uri is 'none'.
+echo 'regolith.look.path: /usr/share/regolith-look/default' \
+    > "$HOME/.config/regolith3/Xresources"
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+export DISPLAY=":$display"
+
+# The window manager is not under test: the login path ends when i3 returns.
+printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/i3"
+printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/i3-msg"
+chmod +x "$tmp/bin/i3" "$tmp/bin/i3-msg"
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/sh
+set -eu
+fail=0
+custom="file://$HOME/custom.png"
+
+login() { # login <n>: a fresh X resource database, then the X11 login path
+    echo 'autopkgtest.display: ready' | xrdb -load
+    # NOTIFY_SOCKET marks the systemd-managed session (regolith-x11.service),
+    # which keeps PATH.
+    if ! NOTIFY_SOCKET="$AUTOPKGTEST_TMP/notify" PATH="$AUTOPKGTEST_TMP/bin:$PATH" \
+         timeout 60 regolith-session-x11 >"$AUTOPKGTEST_TMP/login$1.log" 2>&1; then
+        cat "$AUTOPKGTEST_TMP/login$1.log"
+        echo "FAIL: login $1 did not complete"
+        fail=1
+    fi
+}
+wallpaper() { gsettings get org.gnome.desktop.background picture-uri; }
+expect() { # expect <what> <picture-uri>
+    if [ "$(wallpaper)" = "$2" ]; then
+        echo "ok: $1: wallpaper $2"
+    else
+        echo "FAIL: $1: wallpaper $(wallpaper), expected $2"
+        fail=1
+    fi
+}
+
+login 1
+expect "first login applies the look" "'none'"
+
+gsettings set org.gnome.desktop.background picture-uri "$custom"
+login 2
+expect "second login keeps the user's wallpaper" "'$custom'"
+login 3
+expect "third login keeps the user's wallpaper" "'$custom'"
+
+gsettings set org.gnome.desktop.background picture-uri "$custom"
+PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look refresh >"$AUTOPKGTEST_TMP/refresh.log" 2>&1 \
+    || { cat "$AUTOPKGTEST_TMP/refresh.log"; fail=1; }
+expect "'regolith-look refresh' applies the look" "'none'"
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run"
