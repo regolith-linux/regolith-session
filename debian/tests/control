@@ -52,3 +52,14 @@ Depends: regolith-session-common,
          x11-xserver-utils,
          xvfb
 Restrictions: allow-stderr
+
+Tests: look-first-login
+Depends: regolith-session-flashback,
+         regolith-look-default,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         libglib2.0-bin,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr
