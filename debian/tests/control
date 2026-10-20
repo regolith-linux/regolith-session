@@ -39,3 +39,16 @@ Depends: regolith-session-flashback,
          regolith-session-sway,
          desktop-file-utils
 Restrictions: allow-stderr
+
+Tests: xft-dpi
+Depends: regolith-session-common,
+         gnome-settings-daemon,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         libglib2.0-bin,
+         dbus,
+         gir1.2-gtk-3.0,
+         python3-gi,
+         x11-xserver-utils,
+         xvfb
+Restrictions: allow-stderr

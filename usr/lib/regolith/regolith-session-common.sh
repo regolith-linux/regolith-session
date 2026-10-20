@@ -24,6 +24,9 @@ USER_LOOK_ROOT="$HOME/.config/regolith3/looks"
 # File location - user scripts
 USER_POST_LOGOUT_SCRIPT_FILE="$HOME/.config/regolith3/logout"
 
+# File location - text scaling factor set from the user's Xft.dpi
+XFT_DPI_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/regolith/xft-dpi-text-scaling-factor"
+
 DEFAULT_SESSION_TYPE="i3"
 
 # Set the default resource getter
@@ -107,6 +110,63 @@ load_regolith_xres() {
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
+}
+
+# In the X11 session gsd-xsettings owns Xft.dpi: it publishes 96 dpi times
+# org.gnome.desktop.interface text-scaling-factor, times the UI scale of GNOME
+# Flashback, over XSETTINGS, where GTK reads it, and writes the same value into
+# the X resources over the user's own. To keep an Xft.dpi set in ~/.Xresources
+# or the Regolith Xresources working, set the text scaling factor that makes
+# gsd-xsettings publish that value. The factor is recorded so that removing
+# Xft.dpi later resets it, unless it was changed elsewhere in the meantime.
+apply_user_xft_dpi() {
+    command -v gsettings >/dev/null 2>&1 || return 0
+    local file value dpi="" current scale=1 factor
+    # Later files win, as in the login path
+    for file in "$BASELINE_XRESOURCE_FILE" "$USER_XRESOURCE_OVERRIDE_FILE"; do
+        [ -e "$file" ] || continue
+        value=$(xrdb -n -I"$USER_XRESOURCE_SEARCH_PATH" -load "$file" 2>/dev/null \
+                | sed -n 's/^Xft\.dpi:[[:space:]]*//p' | tail -n 1) || true
+        [ -z "$value" ] || dpi=$value
+    done
+    current=$(gsettings get org.gnome.desktop.interface text-scaling-factor 2>/dev/null) || return 0
+
+    if [ -z "$dpi" ]; then
+        if [ -f "$XFT_DPI_STATE_FILE" ]; then
+            if same_number "$current" "$(cat "$XFT_DPI_STATE_FILE")"; then
+                gsettings reset org.gnome.desktop.interface text-scaling-factor
+            fi
+            rm -f "$XFT_DPI_STATE_FILE"
+        fi
+        return 0
+    fi
+    case $dpi in
+        *[!0-9.]* | .* | *.*.*)
+            echo "Ignoring Xft.dpi: $dpi is not a number" >&2
+            return 0 ;;
+    esac
+
+    # gsd-xsettings uses a UI scale of 1 if GNOME Flashback does not answer.
+    # Flashback starts with the session, so wait for it briefly.
+    if command -v gdbus >/dev/null 2>&1 \
+       && gdbus wait --session --timeout 5 org.gnome.Mutter.X11 >/dev/null 2>&1; then
+        scale=$(gdbus call --session --dest org.gnome.Mutter.X11 \
+                    --object-path /org/gnome/Mutter/X11 \
+                    --method org.freedesktop.DBus.Properties.Get \
+                    org.gnome.Mutter.X11 UiScalingFactor 2>/dev/null \
+                | tr -cd '0-9') || true
+        [ "${scale:-0}" -ge 1 ] 2>/dev/null || scale=1
+    fi
+    factor=$(awk -v dpi="$dpi" -v scale="$scale" 'BEGIN { printf "%.17g", dpi / (96 * scale) }')
+    if ! same_number "$current" "$factor"; then
+        gsettings set org.gnome.desktop.interface text-scaling-factor "$factor"
+    fi
+    mkdir -p "${XFT_DPI_STATE_FILE%/*}"
+    echo "$factor" > "$XFT_DPI_STATE_FILE"
+}
+
+same_number() { # same_number <a> <b>
+    awk -v a="$1" -v b="$2" 'BEGIN { exit !((a - b) ^ 2 < 1e-12) }'
 }
 
 # Loads the Xresource files into trawl. 

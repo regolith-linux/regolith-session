@@ -35,6 +35,9 @@ load_i3_resources() {
     # Due to a limitation of the preprocessor they have double quotes.
     # The i3-wm workspace command fails with double quotes in the name
     xres_i3_cleanup
+
+    # gsd-xsettings replaces Xft.dpi with its own value; make that the user's
+    apply_user_xft_dpi
 }
 
 refresh() {
