@@ -132,3 +132,12 @@ Depends: regolith-session-common,
          trawldb,
          trawlcat
 Restrictions: allow-stderr
+
+Tests: night-light
+Depends: regolith-session-sway,
+         gnome-settings-daemon,
+         sway-regolith | sway,
+         dbus,
+         libglib2.0-bin,
+         systemd
+Restrictions: allow-stderr
