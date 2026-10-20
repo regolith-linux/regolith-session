@@ -1,0 +1,128 @@
+#!/bin/sh
+# Without regolith.look.path the session uses the most recently installed
+# look. Updating or reinstalling look packages must not change which look
+# that is, in the X11 (xrdb/xrescat) and Wayland (trawl) load paths alike.
+# Builds throwaway look packages, installs and updates them with dpkg, and
+# checks the look each load path resolves.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$HOME/.config/regolith3" "$XDG_RUNTIME_DIR" "$tmp/debs"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+pkgs="regolith-look-autopkgtest-early regolith-look-autopkgtest-late regolith-look-autopkgtest-zz"
+
+trap 'dpkg -P $pkgs >/dev/null 2>&1 || true
+      [ -z "${xvfb-}" ] || kill "$xvfb" 2>/dev/null || true' EXIT
+
+# mk <look> <version>: a look package with a root file naming the look. Like
+# regolith-look-default, it also ships a file next to the look directories.
+mk() {
+    d="$tmp/pkg-$1-$2"
+    mkdir -p "$d/DEBIAN" "$d/usr/share/regolith-look/autopkgtest-$1"
+    cat > "$d/DEBIAN/control" <<EOF
+Package: regolith-look-autopkgtest-$1
+Version: $2
+Architecture: all
+Maintainer: autopkgtest <root@localhost>
+Description: throwaway look for the regolith-session look-default test
+EOF
+    printf 'regolith.look: autopkgtest-%s\n' "$1" \
+        > "$d/usr/share/regolith-look/autopkgtest-$1/root"
+    printf '# %s\n' "$2" > "$d/usr/share/regolith-look/autopkgtest-$1_loader.sh"
+    dpkg-deb -b --root-owner-group "$d" "$tmp/debs/$1_$2.deb" >/dev/null
+}
+for look in early late zz; do mk $look 1; mk $look 2; done
+
+Xvfb -displayfd 3 -screen 0 640x480x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+export DISPLAY=":$display"
+# A display manager leaves resources (/etc/X11/Xresources); xrescat fails on
+# an empty database.
+echo 'autopkgtest.display: ready' | xrdb -merge
+
+# The look each load path resolves for a user without Xresources.
+x11_look() {
+    XDG_SESSION_TYPE=x11 bash -c 'set -Eeu -o pipefail
+             . /usr/lib/regolith/regolith-session-common.sh
+             load_regolith_xres
+             xrescat regolith.look'
+}
+wayland_look() {
+    XDG_SESSION_TYPE=wayland dbus-run-session -- bash -c 'set -Eeu -o pipefail
+             trawld >/dev/null 2>&1 &
+             trap "kill $! 2>/dev/null || true" EXIT
+             for _ in 1 2 3 4 5 6 7 8 9 10; do
+                 trawlcat regolith.look x >/dev/null 2>&1 && break; sleep 0.5
+             done
+             . /usr/lib/regolith/regolith-session-common.sh
+             load_regolith_trawlres
+             trawlcat regolith.look'
+}
+check() { # check <what> <expected look>
+    for path in x11 wayland; do
+        case $path in
+            x11) got=$(x11_look 2>"$tmp/err") ;;
+            wayland) got=$(wayland_look 2>"$tmp/err") ;;
+        esac || { cat "$tmp/err"; got="(failed)"; }
+        if [ "$got" = "$2" ]; then
+            echo "ok: $1: $path session uses $got"
+        else
+            echo "FAIL: $1: $path session uses $got, expected $2"
+            fail=1
+        fi
+    done
+}
+
+# 1. A brand-new look shows: "late" is installed after "zz", which sorts last.
+dpkg -i "$tmp/debs/zz_1.deb" >/dev/null
+sleep 1
+dpkg -i "$tmp/debs/early_1.deb" >/dev/null
+sleep 1
+dpkg -i "$tmp/debs/late_1.deb" >/dev/null
+check "after installing a look" autopkgtest-late
+
+# 2. Updating every look in one dpkg run unpacks them in name order.
+sleep 1
+dpkg -i "$tmp/debs/early_2.deb" "$tmp/debs/late_2.deb" "$tmp/debs/zz_2.deb" >/dev/null
+check "after updating all looks" autopkgtest-late
+
+# 3. Reinstalling an older look.
+sleep 1
+dpkg -i "$tmp/debs/early_2.deb" >/dev/null
+check "after reinstalling an older look" autopkgtest-late
+
+# 4. A look that is removed and installed again counts as newly installed.
+dpkg -r regolith-look-autopkgtest-early >/dev/null
+sleep 1
+dpkg -i "$tmp/debs/early_2.deb" >/dev/null
+check "after removing and installing a look again" autopkgtest-early
+
+# 5. A look the user selected still wins.
+echo 'regolith.look.path: /usr/share/regolith-look/autopkgtest-zz' \
+    > "$HOME/.config/regolith3/Xresources"
+check "with regolith.look.path set" autopkgtest-zz
+rm "$HOME/.config/regolith3/Xresources"
+
+# 6. A file system without birth times falls back to the mtime.
+mkdir -p "$tmp/bin"
+printf '#!/bin/sh\necho 0\n' > "$tmp/bin/stat"
+chmod +x "$tmp/bin/stat"
+sleep 1
+dpkg -i "$tmp/debs/zz_2.deb" >/dev/null
+got=$(PATH="$tmp/bin:$PATH" XDG_SESSION_TYPE=x11 bash -c 'set -Eeu -o pipefail
+          . /usr/lib/regolith/regolith-session-common.sh
+          resolve_default_look_path
+          echo "$DEFAULT_XRESOURCE_LOOK_PATH"') || got="(failed)"
+if [ "$got" = /usr/share/regolith-look/autopkgtest-zz ]; then
+    echo "ok: without birth times the newest mtime wins ($got)"
+else
+    echo "FAIL: without birth times got $got"
+    fail=1
+fi
+
+exit $fail

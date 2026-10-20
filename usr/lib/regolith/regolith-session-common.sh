@@ -81,6 +81,20 @@ trawl_sway_cleanup() {
     trawldb --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
 }
 
+# Set DEFAULT_XRESOURCE_LOOK_PATH to the look used when regolith.look.path is
+# not set: the most recently installed look directory, by birth time, as
+# package updates change the mtime. Use the mtime where there is no birth time.
+resolve_default_look_path() {
+    local by_birth=--time=birth newest
+    if stat -c %W "$DEFAULT_LOOK_ROOT"/*/ 2>/dev/null | grep -vx '[1-9][0-9]*' >/dev/null; then
+        by_birth=
+    fi
+    newest=$(ls -td ${by_birth:+"$by_birth"} "$DEFAULT_LOOK_ROOT"/*/ 2>/dev/null | head -n 1) || true
+    if [ -d "$newest" ]; then
+        DEFAULT_XRESOURCE_LOOK_PATH="${newest%/}"
+    fi
+}
+
 # 1. Load the Regolith Xresource override file if exists
 # 2. Load Regolith Look Xresource as defined in override or use default
 # 3. Re-merge Regolith Xresource override file if exists
@@ -89,11 +103,7 @@ load_regolith_xres() {
         xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
-    MOST_RECENT_LOOK=$(ls -td /usr/share/regolith-look/* | head -n 1)
-
-    if [ -d "$MOST_RECENT_LOOK" ]; then
-        DEFAULT_XRESOURCE_LOOK_PATH="$MOST_RECENT_LOOK"
-    fi
+    resolve_default_look_path
 
     LOOK_STYLE_ROOT_PATH=$(xrescat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
 
@@ -176,11 +186,7 @@ load_regolith_trawlres() {
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
-    MOST_RECENT_LOOK=$(ls -td /usr/share/regolith-look/* | head -n 1)
-
-    if [ -d "$MOST_RECENT_LOOK" ]; then
-        DEFAULT_XRESOURCE_LOOK_PATH="$MOST_RECENT_LOOK"
-    fi
+    resolve_default_look_path
 
     LOOK_STYLE_ROOT_PATH=$(trawlcat regolith.look.path "$DEFAULT_XRESOURCE_LOOK_PATH")
 
