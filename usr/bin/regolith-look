@@ -41,7 +41,7 @@ load_i3_resources() {
 }
 
 refresh() {
-    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         WM_RELOAD="swaymsg reload"
         load_sway_resources
         swaymsg -t send_tick '{"status": "reload_pending"}'
@@ -83,7 +83,7 @@ set_look() {
     # add new declaration
     echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
-    if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         echo "setting for wayland"
         trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     else
@@ -96,9 +96,9 @@ set_look() {
 if [ "$COMMAND" == "refresh" ]; then
     refresh
 elif [ "$COMMAND" == "set" ]; then
-    LOOK_NAME=$2
+    LOOK_NAME=${2-}
     if [ -z "$LOOK_NAME" ]; then
-        echo "Must specify a look to set."
+        echo "Must specify a look to set." >&2
         exit 1
     else
         LOOK_PATH="$DEFAULT_LOOK_ROOT/$LOOK_NAME"
@@ -110,7 +110,9 @@ elif [ "$COMMAND" == "set" ]; then
             if [ -d "$LOOK_PATH" ]; then
                 set_look
             else
-                echo "Unable to find look $LOOK_NAME in $DEFAULT_LOOK_PATH or $USER_LOOK_PATH"
+                echo "Unable to find look $LOOK_NAME in $DEFAULT_LOOK_ROOT or $USER_LOOK_ROOT" >&2
+                echo "Run 'regolith-look list' to see the installed looks." >&2
+                exit 1
             fi
         fi
     fi

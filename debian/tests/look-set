@@ -1,0 +1,50 @@
+#!/bin/sh
+# regolith-look set with a look that is not installed, or with no look at
+# all, must fail with a message saying so (exit 1, nothing written), not
+# with a bash "unbound variable" error. regolith-look list must also work
+# from a shell without XDG_SESSION_TYPE (a text console or ssh).
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home"
+mkdir -p "$HOME/.config/regolith3"
+fail=0
+
+# run <name> <expected stderr text> <args...>
+run() {
+    name=$1 want=$2; shift 2
+    rc=0
+    regolith-look "$@" >"$tmp/out" 2>"$tmp/err" || rc=$?
+    if [ "$rc" -ne 1 ]; then
+        echo "FAIL: $name: exit status $rc, expected 1"; fail=1
+    elif grep -q 'unbound variable' "$tmp/out" "$tmp/err"; then
+        echo "FAIL: $name: bash error: $(cat "$tmp/err")"; fail=1
+    elif ! grep -qF "$want" "$tmp/err"; then
+        echo "FAIL: $name: stderr lacks '$want': $(cat "$tmp/out" "$tmp/err")"; fail=1
+    else
+        echo "ok: $name: $(head -n 1 "$tmp/err")"
+    fi
+}
+
+export XDG_SESSION_TYPE=x11
+run "set without a look" "Must specify a look to set." set
+run "set a look that is not installed" \
+    "Unable to find look autopkgtest-no-such-look in /usr/share/regolith-look or $HOME/.config/regolith3/looks" \
+    set autopkgtest-no-such-look
+
+if [ -e "$HOME/.config/regolith3/Xresources" ]; then
+    echo "FAIL: a failed set wrote $HOME/.config/regolith3/Xresources"; fail=1
+else
+    echo "ok: a failed set leaves the user's Xresources alone"
+fi
+
+mkdir -p "$HOME/.config/regolith3/looks/autopkgtest-user-look"
+rc=0
+env -u XDG_SESSION_TYPE regolith-look list >"$tmp/out" 2>"$tmp/err" || rc=$?
+if [ "$rc" -eq 0 ] && grep -qx autopkgtest-user-look "$tmp/out"; then
+    echo "ok: list without XDG_SESSION_TYPE shows the user's look"
+else
+    echo "FAIL: list without XDG_SESSION_TYPE: exit $rc: $(cat "$tmp/out" "$tmp/err")"; fail=1
+fi
+
+exit $fail

@@ -74,3 +74,7 @@ Depends: regolith-session-common,
          trawldb,
          trawlcat
 Restrictions: needs-root, allow-stderr
+
+Tests: look-set
+Depends: regolith-session-common
+Restrictions: allow-stderr

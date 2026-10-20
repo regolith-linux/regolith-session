@@ -31,7 +31,7 @@ DEFAULT_SESSION_TYPE="i3"
 
 # Set the default resource getter
 RESOURCE_GETTER="xrescat"
-if [ $XDG_SESSION_TYPE == "wayland" ]; then
+if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
 	RESOURCE_GETTER="trawlcat"
 fi
 
