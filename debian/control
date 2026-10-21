@@ -69,6 +69,7 @@ Depends: ${misc:Depends},
     xwayland
 Recommends:
     gnome-terminal,
+    regolith-default-settings,
     regolith-wm-rofication-ilia,
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
