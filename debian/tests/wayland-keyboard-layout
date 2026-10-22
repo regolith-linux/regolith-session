@@ -1,0 +1,126 @@
+#!/bin/sh
+# A user whose first login is the Wayland session has no GNOME input sources
+# yet. In GNOME, and in the Regolith X11 session, gsd-keyboard fills them in
+# from the system keyboard configuration (systemd-localed) on first login;
+# regolith-inputd then applies them to sway. Check that the Wayland session
+# starts gsd-keyboard, and that gsd-keyboard does that import outside GNOME
+# Shell: against a stand-in localed on a private bus, with no GNOME session.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+fail=0
+
+# 1. The Wayland session pulls in the keyboard plugin, as the X11 one does.
+for session in regolith-wayland regolith-x11; do
+    conf=/usr/lib/systemd/user/gnome-session@$session.target.d/session.conf
+    if grep -qx 'Wants=org.gnome.SettingsDaemon.Keyboard.target' "$conf"; then
+        echo "ok: gnome-session@$session.target wants the keyboard plugin"
+    else
+        echo "FAIL: gnome-session@$session.target does not want org.gnome.SettingsDaemon.Keyboard.target"
+        fail=1
+    fi
+    if grep -q '^RequiredComponents=.*org\.gnome\.SettingsDaemon\.Keyboard;' \
+            /usr/share/gnome-session/sessions/$session.session; then
+        echo "ok: $session.session lists the keyboard plugin"
+    else
+        echo "FAIL: $session.session does not list org.gnome.SettingsDaemon.Keyboard"
+        fail=1
+    fi
+done
+if [ -f /usr/lib/systemd/user/org.gnome.SettingsDaemon.Keyboard.target ]; then
+    echo "ok: gnome-settings-daemon ships org.gnome.SettingsDaemon.Keyboard.target"
+else
+    echo "FAIL: org.gnome.SettingsDaemon.Keyboard.target is not installed"
+    fail=1
+fi
+
+# 2. What gsd-keyboard does with an empty input source list and with one the
+#    user already chose. localed is replaced by a stand-in on a private bus
+#    that the plugin uses as its system bus.
+cat > "$tmp/localed.py" <<'PY'
+import sys
+from gi.repository import Gio, GLib
+
+XML = """<node><interface name="org.freedesktop.locale1">
+<property name="X11Layout" type="s" access="read"/>
+<property name="X11Variant" type="s" access="read"/>
+<property name="X11Options" type="s" access="read"/>
+<property name="X11Model" type="s" access="read"/>
+</interface></node>"""
+VALUES = {"X11Layout": "de,us", "X11Variant": "nodeadkeys,",
+          "X11Options": "caps:escape", "X11Model": "pc105"}
+
+def get_property(conn, sender, path, iface, name):
+    return GLib.Variant("s", VALUES[name])
+
+bus = Gio.DBusConnection.new_for_address_sync(
+    sys.argv[1], Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT
+    | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION)
+bus.register_object("/org/freedesktop/locale1",
+                    Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0],
+                    None, get_property, None)
+bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus",
+              "org.freedesktop.DBus", "RequestName",
+              GLib.Variant("(su)", ("org.freedesktop.locale1", 4)),
+              None, Gio.DBusCallFlags.NONE, -1)
+print("ready", flush=True)
+GLib.MainLoop().run()
+PY
+
+cat > "$tmp/run-plugin.sh" <<'SH'
+#!/bin/sh
+# run-plugin.sh <home>: run gsd-keyboard for a few seconds for a user whose
+# settings live in <home>, then print the input sources.
+set -eu
+export HOME=$1 XDG_CONFIG_HOME=$1/.config XDG_DATA_HOME=$1/.local/share
+export GSETTINGS_BACKEND=keyfile
+# gnome-settings-daemon 46 and 48 initialise GTK in this plugin; it gets a
+# display in the session, so give it one here as well. It keeps running
+# after the import, so it is stopped after a while.
+xvfb-run -a timeout 8 /usr/libexec/gsd-keyboard > "$HOME/plugin.log" 2>&1 || true
+echo "sources=$(gsettings get org.gnome.desktop.input-sources sources)"
+echo "options=$(gsettings get org.gnome.desktop.input-sources xkb-options)"
+SH
+chmod +x "$tmp/run-plugin.sh"
+
+dbus-daemon --session --fork --print-address=3 --print-pid=4 \
+    3> "$tmp/bus.address" 4> "$tmp/bus.pid"
+system_bus=$(cat "$tmp/bus.address")
+python3 "$tmp/localed.py" "$system_bus" > "$tmp/localed.out" 2>&1 &
+localed=$!
+for i in $(seq 1 50); do
+    grep -q ready "$tmp/localed.out" 2>/dev/null && break
+    sleep 0.1
+done
+cleanup() {
+    kill "$localed" 2>/dev/null || true
+    kill "$(cat "$tmp/bus.pid")" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+check() { # check <label> <home> <expected output>
+    got=$(DBUS_SYSTEM_BUS_ADDRESS=$system_bus dbus-run-session -- "$tmp/run-plugin.sh" "$2")
+    if [ "$got" = "$3" ]; then
+        echo "ok: $1: $(echo "$got" | tr '\n' ' ')"
+    else
+        echo "FAIL: $1"
+        echo "  got:  $(echo "$got" | tr '\n' ' ')"
+        echo "  want: $(echo "$3" | tr '\n' ' ')"
+        sed 's/^/  plugin: /' "$2/plugin.log"
+        fail=1
+    fi
+}
+
+mkdir -p "$tmp/new-user"
+check "first login takes the system layouts and options" "$tmp/new-user" \
+"sources=[('xkb', 'de+nodeadkeys'), ('xkb', 'us')]
+options=['caps:escape']"
+
+mkdir -p "$tmp/old-user/.config/glib-2.0/settings"
+printf "[org/gnome/desktop/input-sources]\nsources=[('xkb', 'fr')]\nxkb-options=['compose:ralt']\n" \
+    > "$tmp/old-user/.config/glib-2.0/settings/keyfile"
+check "a user's own choice is kept" "$tmp/old-user" \
+"sources=[('xkb', 'fr')]
+options=['compose:ralt']"
+
+exit $fail
