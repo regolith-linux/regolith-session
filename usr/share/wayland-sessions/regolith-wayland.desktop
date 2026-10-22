@@ -4,3 +4,4 @@ Comment=Productivity focused desktop environment
 Exec=/usr/bin/regolith-session-wayland-launch
 TryExec=/usr/bin/regolith-session-wayland-launch
 Type=Application
+DesktopNames=Regolith-Wayland;GNOME;sway

@@ -3,6 +3,10 @@ set -Eeu -o pipefail
 
 SESSION_TYPE="regolith-wayland"
 
+if [ -z "${XDG_CURRENT_DESKTOP-}" ]; then
+    export XDG_CURRENT_DESKTOP="Regolith-Wayland:GNOME:sway"
+fi
+
 # Session-scoped XDG configuration, such as the autostart entries hidden in
 # this session, lives in /etc/xdg/xdg-$SESSION_TYPE. Ubuntu's Xsession and
 # profile scripts put it first in XDG_CONFIG_DIRS; do the same where they
