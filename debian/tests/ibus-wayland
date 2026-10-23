@@ -1,0 +1,42 @@
+#!/bin/sh
+# gnome-session's IBus daemon for GNOME must not start in the Regolith
+# Wayland session, where nothing selects an IBus engine, and must still start
+# in the Regolith X11 session and in GNOME sessions. Evaluates the unit's
+# conditions, including Regolith's drop-in, as the user manager would for
+# each session.
+set -eu
+
+unit=org.freedesktop.IBus.session.GNOME.service
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$tmp/xdg-runtime}" XDG_SESSION_CLASS=user
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+
+if [ ! -f "/usr/lib/systemd/user/$unit" ]; then
+    echo "FAIL: $unit is not installed"
+    exit 1
+fi
+
+for desktop in regolith-wayland regolith-x11 ubuntu gnome; do
+    out=$(XDG_SESSION_DESKTOP=$desktop \
+          systemd-analyze condition --user --unit="$unit" 2>&1) || true
+    if printf '%s\n' "$out" | grep -q 'XDG_SESSION_DESKTOP=regolith-wayland failed'; then
+        stopped=yes
+    else
+        stopped=no
+    fi
+    case $desktop:$stopped in
+        regolith-wayland:yes) echo "ok: $unit does not start in $desktop" ;;
+        regolith-wayland:no)
+            printf '%s\n' "$out"
+            echo "FAIL: $unit would start in $desktop"
+            fail=1 ;;
+        *:no) echo "ok: Regolith's drop-in leaves $unit to run in $desktop" ;;
+        *:yes)
+            printf '%s\n' "$out"
+            echo "FAIL: Regolith's drop-in stops $unit in $desktop"
+            fail=1 ;;
+    esac
+done
+exit $fail
