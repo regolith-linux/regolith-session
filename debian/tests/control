@@ -15,6 +15,19 @@ Depends: regolith-session-flashback,
          systemd
 Restrictions: allow-stderr
 
+Tests: wayland-keyboard-layout
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         gnome-settings-daemon,
+         gsettings-desktop-schemas,
+         libglib2.0-bin,
+         dbus,
+         python3-gi,
+         gir1.2-glib-2.0,
+         xvfb,
+         xauth
+Restrictions: allow-stderr
+
 Tests: x11-workspace-names
 Depends: regolith-session-flashback,
          regolith-look-default,
