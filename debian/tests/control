@@ -91,3 +91,12 @@ Restrictions: needs-root, allow-stderr
 Tests: look-set
 Depends: regolith-session-common
 Restrictions: allow-stderr
+
+Tests: night-light
+Depends: regolith-session-sway,
+         gnome-settings-daemon,
+         sway-regolith | sway,
+         dbus,
+         libglib2.0-bin,
+         systemd
+Restrictions: allow-stderr
