@@ -1,0 +1,90 @@
+#!/bin/sh
+# Java AWT/Swing applications need _JAVA_AWT_WM_NONREPARENTING=1 under sway,
+# which does not reparent XWayland windows; without it they draw an empty
+# grey window. The Wayland session must export it to sway (keeping a value
+# the user set), and the X11 session must not set it for i3, which
+# reparents. Runs both session scripts with the window managers stubbed out.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$HOME/.config/regolith3/flags" "$HOME/.config/environment.d" \
+         "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+# The session scripts may take PATH from environment.d: put the stubs
+# first there too, in a file that sorts after the 99-environment.conf
+# that imports /etc/environment.
+echo "PATH=$tmp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    > "$HOME/.config/environment.d/99-zz-autopkgtest-path.conf"
+
+# The window managers are not under test: they record their environment.
+for wm in i3 sway; do
+    printf '#!/bin/sh\nenv > "%s/%s.env.$RUN"\n' "$tmp" "$wm" > "$tmp/bin/$wm"
+    chmod +x "$tmp/bin/$wm"
+done
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true; pkill -u "$(id -u)" -x trawld 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/sh
+set -eu
+fail=0
+t=$AUTOPKGTEST_TMP
+PATH="$t/bin:$PATH"
+
+value() { # value <env file>: the variable's value, or "unset"
+    if grep -q '^_JAVA_AWT_WM_NONREPARENTING=' "$1"; then
+        sed -n 's/^_JAVA_AWT_WM_NONREPARENTING=//p' "$1"
+    else
+        echo unset
+    fi
+}
+
+check() { # check <wm> <run> <expected>
+    f="$t/$1.env.$2"
+    if [ ! -f "$f" ]; then
+        echo "FAIL: $1 ($2): the window manager stub did not run"; cat "$t/$2.log"; fail=1; return
+    fi
+    got=$(value "$f")
+    if [ "$got" = "$3" ]; then
+        echo "ok: $1 ($2): _JAVA_AWT_WM_NONREPARENTING is $got"
+    else
+        echo "FAIL: $1 ($2): _JAVA_AWT_WM_NONREPARENTING is '$got', expected '$3'"; fail=1
+    fi
+}
+
+run_x11() { # run_x11 <run> [env assignments...]
+    r=$1; shift
+    env -u NOTIFY_SOCKET -u _JAVA_AWT_WM_NONREPARENTING RUN="$r" "$@" \
+        XDG_SESSION_TYPE=x11 DISPLAY=":$DISPLAY_NUMBER" \
+        XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
+        timeout 60 regolith-session-x11 > "$t/$r.log" 2>&1 || { cat "$t/$r.log"; fail=1; }
+}
+
+run_wayland() { # run_wayland <run> [env assignments...]
+    r=$1; shift
+    env -u NOTIFY_SOCKET -u DISPLAY -u _JAVA_AWT_WM_NONREPARENTING RUN="$r" "$@" \
+        XDG_SESSION_TYPE=wayland \
+        timeout 60 regolith-session-wayland > "$t/$r.log" 2>&1 || { cat "$t/$r.log"; fail=1; }
+}
+
+run_wayland wayland-default
+check sway wayland-default 1
+
+run_wayland wayland-user _JAVA_AWT_WM_NONREPARENTING=user-value
+check sway wayland-user user-value
+
+run_x11 x11-default
+check i3 x11-default unset
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+AUTOPKGTEST_TMP="$tmp" DISPLAY_NUMBER="$display" dbus-run-session -- "$tmp/run"
