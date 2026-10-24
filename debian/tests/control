@@ -106,3 +106,10 @@ Restrictions: needs-root, allow-stderr
 Tests: look-set
 Depends: regolith-session-common
 Restrictions: allow-stderr
+
+Tests: upgrade-relations
+Depends: regolith-session-common,
+         regolith-session-flashback,
+         regolith-session-sway,
+         dpkg
+Restrictions: needs-root, allow-stderr

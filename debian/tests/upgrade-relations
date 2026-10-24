@@ -1,0 +1,69 @@
+#!/bin/sh
+# Plain "apt upgrade" never removes a package, so it keeps back any upgrade
+# that Breaks every version of something installed. regolith-session-sway
+# used to break all of regolith-sway-audio-idle-inhibit, so Regolith 3.3
+# users who ran "apt upgrade" kept the old sway session. regolith-session-common
+# was upgraded anyway and dropped /usr/bin/regolith-session, which the old
+# session's login entry runs, and "Regolith / Wayland" vanished from the login
+# screen.
+#
+# Ask dpkg, with empty stand-in packages, which versions it accepts next to
+# the installed session packages (a refused package is left out; an accepted
+# stand-in that was not installed before is purged again):
+#  - the sway session refuses the old regolith-sway-audio-idle-inhibit (its
+#    sway partial started a second inhibitor) and accepts the empty
+#    transitional package that regolith-wm-config ships from 4.11.13 on;
+#  - regolith-session-common refuses session packages older than 1.2.0, whose
+#    login entries still run /usr/bin/regolith-session.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+fail=0
+
+# stand_in <name> <version>: build an empty package and print its path.
+stand_in() {
+    dir="$tmp/$1-$2"
+    mkdir -p "$dir/DEBIAN"
+    cat > "$dir/DEBIAN/control" <<EOF
+Package: $1
+Version: $2
+Architecture: all
+Maintainer: Regolith Linux <regolith.linux@gmail.com>
+Description: empty stand-in for the upgrade-relations test
+EOF
+    dpkg-deb --root-owner-group --build "$dir" "$tmp/$1_$2_all.deb" >/dev/null
+    echo "$tmp/$1_$2_all.deb"
+}
+
+# expect <accept|refuse> <name> <version> <reason>
+expect() {
+    deb=$(stand_in "$2" "$3")
+    before=$(dpkg-query -W -f '${db:Status-Abbrev}' "$2" 2>/dev/null || true)
+    if dpkg --install "$deb" > "$tmp/dpkg.out" 2>&1; then
+        got=accept
+        case "$before" in
+            ii*) ;;
+            *) dpkg --purge "$2" > /dev/null ;;
+        esac
+    else
+        got=refuse
+    fi
+    if [ "$got" = "$1" ]; then
+        echo "ok: dpkg ${got}s $2 $3 ($4)"
+    else
+        echo "FAIL: dpkg ${got}s $2 $3, expected it to $1 ($4)"
+        sed 's/^/    /' "$tmp/dpkg.out"
+        fail=1
+    fi
+}
+
+expect refuse regolith-sway-audio-idle-inhibit 4.11.10-1regolith-noble \
+    "the last version with the sway partial"
+expect accept regolith-sway-audio-idle-inhibit 4.11.13-1regolith-noble \
+    "the empty transitional package"
+expect refuse regolith-session-sway 1.1.13-1-1regolith-noble \
+    "its login entry runs /usr/bin/regolith-session"
+expect refuse regolith-session-flashback 1.1.13-1-1regolith-noble \
+    "its login entry runs /usr/bin/regolith-session"
+
+exit $fail
