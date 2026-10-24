@@ -15,10 +15,8 @@ if [ -z "${NOTIFY_SOCKET-}" ]; then
       dbus-send --print-reply --session --dest=org.gnome.SessionManager "/org/gnome/SessionManager" org.gnome.SessionManager.RegisterClient "string:Regolith-Wayland" "string:$DESKTOP_AUTOSTART_ID"
   fi
 
-  # Export environmentt from Environment.d
-  while read -r l; do
-      eval export $l
-  done < <(/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator)
+  # Add the environment.d variables the login environment does not set
+  import_environment_d
 fi
 
 # --------- Script Main -----------

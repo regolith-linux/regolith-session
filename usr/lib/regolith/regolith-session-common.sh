@@ -35,6 +35,26 @@ if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
 	RESOURCE_GETTER="trawlcat"
 fi
 
+# Add the variables set in environment.d to the environment of a session that
+# gnome-session runs itself (--builtin), as systemd gives them to the services
+# of a systemd-managed session. Variables of the login environment win, as in
+# that session, where gnome-session imports them into the user manager.
+# Ubuntu and Debian link /etc/environment into environment.d, so the PATH
+# Ubuntu sets there would otherwise replace the PATH that ~/.profile set.
+import_environment_d() {
+    local generator=/usr/lib/systemd/user-environment-generators/30-systemd-environment-d-generator
+    local line name
+    [ -x "$generator" ] || return 0
+    while IFS= read -r line; do
+        name=${line%%=*}
+        [[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+        # The generator quotes values for the shell, as in VAR="a b"
+        if [ -z "${!name+set}" ]; then
+            eval "export -- $line"
+        fi
+    done < <("$generator")
+}
+
 # Determine where the default i3 and sway config files are
 # Sets I3_CONFIG_FILE and SWAY_CONFIG_FILE
 resolve_default_config_file() {
