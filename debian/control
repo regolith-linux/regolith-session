@@ -75,8 +75,8 @@ Recommends:
     xdg-desktop-portal-regolith-wayland-config
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
-Breaks: regolith-sway-audio-idle-inhibit
-Replaces: regolith-sway-audio-idle-inhibit
+Breaks: regolith-sway-audio-idle-inhibit (<< 4.11.11~)
+Replaces: regolith-sway-audio-idle-inhibit (<< 4.11.11~)
 Description: Regolith customized SwayWM session
  This package contains the desktop and wayland session configuration
  necessary to start a Regolith sway session.
@@ -85,7 +85,9 @@ Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
-Breaks: regolith-session (<= 1.1.2)
+Breaks: regolith-session (<= 1.1.2),
+    regolith-session-flashback (<< 1.2.0~),
+    regolith-session-sway (<< 1.2.0~)
 Conflicts: session-shortcuts, regolith-session-flashback (<= 0.6.4)
 Description: Common files for regolith X11 session
  This package contains common scripts required by regolith-session variants.
