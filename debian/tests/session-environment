@@ -1,0 +1,79 @@
+#!/bin/sh
+# When gnome-session runs the session itself (--builtin, as on Ubuntu 22.04
+# and Debian 12), regolith-session-x11 and regolith-session-wayland add the
+# environment.d variables to the window manager's environment. The login
+# environment must win, as in the systemd-managed session: PATH from
+# ~/.profile must survive the PATH that /etc/environment sets through
+# environment.d. Runs both scripts with the window manager stubbed out.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$HOME/.config/environment.d" "$HOME/.config/regolith3/flags" \
+         "$HOME/.local/bin" "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+
+# User environment.d settings: one only there, one also in the login
+# environment, one with spaces, and a PATH like /etc/environment's.
+cat > "$HOME/.config/environment.d/50-autopkgtest.conf" <<'EOF'
+ENVD_ONLY=from-environment.d
+ENVD_AND_LOGIN=from-environment.d
+ENVD_SPACES=a b  c "quoted"
+EOF
+echo 'PATH=/usr/local/bin:/usr/bin:/bin' > "$HOME/.config/environment.d/99-path.conf"
+
+# The window managers are not under test: they record their environment.
+for wm in i3 sway; do
+    printf '#!/bin/sh\nenv > "%s/%s.env"\n' "$tmp" "$wm" > "$tmp/bin/$wm"
+    chmod +x "$tmp/bin/$wm"
+done
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true; pkill -u "$(id -u)" -x trawld 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/sh
+set -eu
+fail=0
+t=$AUTOPKGTEST_TMP
+# The PATH of a login after ~/.profile added ~/.local/bin
+login_path="$t/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+check() { # check <wm> <variable> <expected value>
+    got=$(sed -n "s/^$2=//p" "$t/$1.env")
+    if [ "$got" = "$3" ]; then
+        echo "ok: $1: $2=$got"
+    else
+        echo "FAIL: $1: $2='$got', expected '$3'"
+        fail=1
+    fi
+}
+
+# No NOTIFY_SOCKET: the session is not a systemd service (gnome-session --builtin)
+env -u NOTIFY_SOCKET PATH="$login_path" ENVD_AND_LOGIN=from-login \
+    XDG_SESSION_TYPE=x11 DISPLAY=":$DISPLAY_NUMBER" \
+    XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
+    timeout 60 regolith-session-x11 > "$t/x11.log" 2>&1 || { cat "$t/x11.log"; fail=1; }
+
+env -u NOTIFY_SOCKET -u DISPLAY PATH="$login_path" ENVD_AND_LOGIN=from-login \
+    XDG_SESSION_TYPE=wayland \
+    timeout 60 regolith-session-wayland > "$t/wayland.log" 2>&1 || { cat "$t/wayland.log"; fail=1; }
+
+for wm in i3 sway; do
+    if [ ! -f "$t/$wm.env" ]; then
+        echo "FAIL: the $wm stub did not run: the login PATH was replaced"; fail=1; continue
+    fi
+    check $wm PATH "$login_path"
+    check $wm ENVD_ONLY from-environment.d
+    check $wm ENVD_AND_LOGIN from-login
+    check $wm ENVD_SPACES 'a b  c "quoted"'
+done
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+AUTOPKGTEST_TMP="$tmp" DISPLAY_NUMBER="$display" dbus-run-session -- "$tmp/run"

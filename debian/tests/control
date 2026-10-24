@@ -1,0 +1,8 @@
+Tests: session-environment
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         systemd,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr
