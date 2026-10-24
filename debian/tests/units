@@ -24,8 +24,9 @@ if [ -z "$units" ]; then
 fi
 for unit in $units; do
     case $unit in
-        gnome-initial-setup-*)
-            # Drop-ins for another package's units; see the initial-setup test.
+        gnome-initial-setup-*|org.freedesktop.IBus.session.GNOME.service)
+            # Drop-ins for other packages' units; see the initial-setup and
+            # ibus-wayland tests.
             continue ;;
     esac
     echo "systemd-analyze verify --user $unit"

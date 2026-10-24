@@ -9,3 +9,4 @@ usr/lib/systemd/user/regolith-wayland.target
 usr/lib/systemd/user/gnome-session@regolith-wayland.target.d
 usr/lib/systemd/user/gnome-initial-setup-first-login.service.d/regolith-wayland.conf
 usr/lib/systemd/user/gnome-initial-setup-upgrade-login.service.d/regolith-wayland.conf
+usr/lib/systemd/user/org.freedesktop.IBus.session.GNOME.service.d/regolith-wayland.conf

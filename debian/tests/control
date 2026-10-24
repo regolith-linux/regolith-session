@@ -46,6 +46,12 @@ Depends: regolith-session-flashback,
          x11-xserver-utils
 Restrictions: allow-stderr
 
+Tests: ibus-wayland
+Depends: regolith-session-sway,
+         ibus,
+         systemd
+Restrictions: allow-stderr
+
 Tests: lock-screen-keys
 Depends: regolith-session-flashback,
          gsettings-desktop-schemas,
