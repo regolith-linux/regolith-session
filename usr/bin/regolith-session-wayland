@@ -32,9 +32,6 @@ load_regolith_trawlres
 
 trawl_sway_cleanup
 
-# Java AWT/Swing applications run under XWayland and cannot detect that sway
-# does not reparent windows: without this they draw an empty grey window and
-# misplace menus and drop-downs. Keep any value the user already set.
 export _JAVA_AWT_WM_NONREPARENTING="${_JAVA_AWT_WM_NONREPARENTING:-1}"
 
 UPDATE_FLAG_DIR="$HOME/.config/regolith3/flags"
