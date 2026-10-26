@@ -1,0 +1,57 @@
+#!/bin/sh
+# Non-ASCII text in Xresources values must reach i3 and sway as written
+# (regolith-desktop discussion #1094): cpp in C mode wrote ñ, 五 or 🌍 out as
+# \U escapes. Checks the X11 (xrdb/xrescat) and Wayland (trawl) load paths,
+# including the workspace-name cleanup each session runs after loading.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$HOME/.config/regolith3/Xresources.d" "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+
+# A user override with an include and a macro, which still need cpp.
+printf '#include "names"\ntest.color: MYCOLOR\n' > "$HOME/.config/regolith3/Xresources"
+printf '#define MYCOLOR #ff0000\nwm.workspace.01.name: 1: \360\237\214\215\nwm.workspace.02.name: 2: \303\261\nwm.workspace.05.name: 5:\344\272\224\n' \
+    > "$HOME/.config/regolith3/Xresources.d/names"
+expected=$(printf '1: \360\237\214\215|2: \303\261|5:\344\272\224|#ff0000')
+
+Xvfb -displayfd 3 -screen 0 640x480x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+export DISPLAY=":$(cat "$tmp/display")"
+echo 'autopkgtest.display: ready' | xrdb -merge
+
+x11=$(XDG_SESSION_TYPE=x11 bash -c 'set -Eeu -o pipefail
+          . /usr/lib/regolith/regolith-session-common.sh
+          load_regolith_xres
+          xres_i3_cleanup
+          for k in wm.workspace.01.name wm.workspace.02.name wm.workspace.05.name test.color; do
+              printf "%s|" "$(xrescat $k missing)"
+          done')
+wayland=$(XDG_SESSION_TYPE=wayland dbus-run-session -- bash -c 'set -Eeu -o pipefail
+          trawld >/dev/null 2>&1 &
+          trap "kill $! 2>/dev/null || true" EXIT
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+              trawlcat autopkgtest.none x >/dev/null 2>&1 && break; sleep 0.5
+          done
+          . /usr/lib/regolith/regolith-session-common.sh
+          load_regolith_trawlres
+          trawl_sway_cleanup
+          for k in wm.workspace.01.name wm.workspace.02.name wm.workspace.05.name test.color; do
+              printf "%s|" "$(trawlcat $k missing)"
+          done')
+
+for path in x11 wayland; do
+    eval "got=\$$path"
+    if [ "${got%|}" = "$expected" ]; then
+        echo "ok: $path load path keeps non-ASCII values"
+    else
+        echo "FAIL: $path load path: got '${got%|}', expected '$expected'"
+        fail=1
+    fi
+done
+exit $fail

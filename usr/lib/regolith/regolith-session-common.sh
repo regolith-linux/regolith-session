@@ -29,6 +29,9 @@ XFT_DPI_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/regolith/xft-dpi-text-
 
 DEFAULT_SESSION_TYPE="i3"
 
+# Preprocessor for Xresources files; keeps non-ASCII values as they are
+XRES_CPP="/usr/lib/regolith/regolith-xres-cpp"
+
 # Set the default resource getter
 RESOURCE_GETTER="xrescat"
 if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
@@ -75,14 +78,14 @@ resolve_default_config_file() {
 # Load default Xresources
 load_standard_xres() {
     if [ -e "$BASELINE_XRESOURCE_FILE" ]; then
-        xrdb -merge "$BASELINE_XRESOURCE_FILE"
+        xrdb -cpp "$XRES_CPP" -merge "$BASELINE_XRESOURCE_FILE"
     fi
 }
 
 # Load default Xresources
 load_standard_trawlres() {
     if [ -f "$BASELINE_XRESOURCE_FILE" ]; then
-        trawldb --merge "$BASELINE_XRESOURCE_FILE"
+        trawldb --cpp "$XRES_CPP" --merge "$BASELINE_XRESOURCE_FILE"
     fi
 }
 
@@ -93,12 +96,12 @@ load_standard_trawlres() {
 # "set -e -o pipefail", so that must not end the script (it once stopped
 # the X11 login before i3 started, which is why the call was removed then).
 xres_i3_cleanup() {
-    xrdb -query | { grep wm.workspace. || true; } | sed "s/\"/'/g" | xrdb -merge
+    xrdb -query | { grep wm.workspace. || true; } | sed "s/\"/'/g" | xrdb -nocpp -merge
 }
 
 trawl_sway_cleanup() {
     trawldb --query wm.workspace.|sed "s/\"/'/g" > $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
-    trawldb --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
+    trawldb --nocpp --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
 }
 
 # Set DEFAULT_XRESOURCE_LOOK_PATH to the look used when regolith.look.path is
@@ -120,7 +123,7 @@ resolve_default_look_path() {
 # 3. Re-merge Regolith Xresource override file if exists
 load_regolith_xres() {
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
     resolve_default_look_path
@@ -134,11 +137,11 @@ load_regolith_xres() {
     fi
 
     if [ -e "$LOOK_STYLE_ROOT_FILE" ]; then
-        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
+        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
     fi #TODO: emit some dialog notifying user of invalid configuration on else
 
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 }
 
@@ -203,7 +206,7 @@ same_number() { # same_number <a> <b>
 # NOTE: Will load sway specific reource files
 load_regolith_trawlres() {
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 
     resolve_default_look_path
@@ -217,10 +220,10 @@ load_regolith_trawlres() {
     fi
 
     if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
-        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE" 
+        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE" 
     fi #TODO: emit some dialog notifying user of invalid configuration on else
     
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 }

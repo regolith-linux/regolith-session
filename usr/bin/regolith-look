@@ -85,9 +85,9 @@ set_look() {
 
     if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         echo "setting for wayland"
-        trawldb -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     else
-        xrdb -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
+        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
     # The new look must be loaded into Xresources before refresh occurs
     refresh
