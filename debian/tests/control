@@ -92,6 +92,14 @@ Depends: regolith-session-flashback,
          x11-xserver-utils
 Restrictions: allow-stderr
 
+Tests: java-wm-nonreparenting
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr
+
 Tests: look-default
 Depends: regolith-session-common,
          xrescat,
