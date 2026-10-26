@@ -121,3 +121,14 @@ Depends: regolith-session-common,
          regolith-session-sway,
          dpkg
 Restrictions: needs-root, allow-stderr
+
+Tests: xres-non-ascii
+Depends: regolith-session-common,
+         xrescat,
+         x11-xserver-utils,
+         xvfb,
+         dbus,
+         trawld,
+         trawldb,
+         trawlcat
+Restrictions: allow-stderr

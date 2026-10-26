@@ -1,0 +1,7 @@
+#!/bin/sh
+# Preprocessor for Regolith Xresources (xrdb -cpp, trawldb --cpp).
+# In C mode GCC's cpp reads letters such as ñ, 五 or 🌍 as identifier
+# characters and writes them out as \U escapes, so resource values like
+# "wm.workspace.01.name: 1: ñ" arrive in i3 and sway escaped. Values are
+# not C: keep non-ASCII text as it is.
+exec cpp -fno-extended-identifiers "$@"
