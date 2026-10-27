@@ -132,3 +132,8 @@ Depends: regolith-session-common,
          trawldb,
          trawlcat
 Restrictions: allow-stderr
+
+Tests: bar-blocks
+Depends: regolith-session-flashback,
+         i3status-rs
+Restrictions: allow-stderr
