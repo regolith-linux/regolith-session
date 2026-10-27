@@ -20,6 +20,7 @@ if [ -z "${NOTIFY_SOCKET-}" ]; then
 fi
 
 # --------- Script Main -----------
+clear_wm_sockets    # SWAYSOCK and I3SOCK of an earlier session
 resolve_default_config_file
 
 load_standard_trawlres

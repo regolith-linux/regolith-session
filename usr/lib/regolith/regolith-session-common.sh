@@ -58,6 +58,18 @@ import_environment_d() {
     done < <("$generator")
 }
 
+# Drop the IPC socket variables of an earlier session. The sway session puts
+# SWAYSOCK and I3SOCK into the systemd user environment, and the user manager
+# outlives a logout while the user has another session (ssh, lingering, a
+# quick new login), so the next session's services and window manager inherit
+# them. i3 takes I3SOCK as the path for its own IPC socket, so it would listen
+# on the dead sway socket's path, and a stale SWAYSOCK makes tools believe
+# they run under sway. The window managers set the variables they need.
+clear_wm_sockets() {
+    unset I3SOCK SWAYSOCK
+    systemctl --user unset-environment I3SOCK SWAYSOCK 2>/dev/null || :
+}
+
 # Determine where the default i3 and sway config files are
 # Sets I3_CONFIG_FILE and SWAY_CONFIG_FILE
 resolve_default_config_file() {

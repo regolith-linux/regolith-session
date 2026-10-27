@@ -33,7 +33,8 @@ ExecStart=regolith-session-x11
 # Setup custom environment for session
 EnvironmentFile=-%h/.config/regolith3/i3/env
 
-# On X11 we do not need to unset any variables
+# Drop i3's IPC socket from the user environment, which i3 imports into it
+ExecStopPost=-systemctl --user unset-environment I3SOCK SWAYSOCK
 
 # On X11 we want to restart on-success and on-failure.
 Restart=always
