@@ -1,8 +1,20 @@
-Tests: session-environment
+Test-Command: debian/tests/session-environment x11
 Depends: regolith-session-flashback,
-         regolith-session-sway,
          systemd,
          dbus,
          xvfb,
          x11-xserver-utils
 Restrictions: allow-stderr
+
+# regolith-session-sway is not built for Debian 12: skipped there.
+Test-Command: debian/tests/session-environment wayland
+Depends: regolith-session-sway,
+         systemd,
+         dbus
+Restrictions: allow-stderr, skip-not-installable
+
+Tests: sessions-per-vendor
+Depends: regolith-session-flashback,
+         debhelper,
+         dpkg-dev,
+         make
