@@ -1,0 +1,68 @@
+#!/bin/sh
+# Each session's login goes through systemd user units that come from other
+# packages: gnome-session starts gnome-session@<session>.target, and the
+# Regolith units require more gnome-session targets. Those units are in
+# gnome-session-common, which gnome-session-bin no longer depends on (GNOME 50).
+# Unless the session package depends on the package that ships each of them,
+# "apt autoremove" can remove it once nothing else (GNOME Shell, gdm3) needs
+# it, and the login then fails with "Unit gnome-session@... not found".
+#
+# For each session package, find the units it starts or hard-requires, and
+# check that the package shipping each one is the session package itself,
+# regolith-session-common, or listed in the session package's Depends.
+set -eu
+
+unit_dirs="/etc/systemd/user /usr/lib/systemd/user"
+fail=0
+
+# unit_file <unit>: path of the unit, or of its template for an instance.
+unit_file() {
+    for d in $unit_dirs; do
+        [ -e "$d/$1" ] && { echo "$d/$1"; return 0; }
+    done
+    template=$(echo "$1" | sed -n 's/^\([^@]*@\)[^.]*\(\..*\)$/\1\2/p')
+    if [ -n "$template" ]; then
+        for d in $unit_dirs; do
+            [ -e "$d/$template" ] && { echo "$d/$template"; return 0; }
+        done
+    fi
+    return 1
+}
+
+check() {
+    pkg=$1 session=$2
+    depends=$(dpkg-query -W -f '${Depends}' "$pkg" \
+              | tr ',|' '\n\n' | sed 's/(.*//; s/:any//; s/[[:space:]]//g')
+    # gnome-session --session=<session> starts this target ...
+    units="gnome-session@$session.target"
+    # ... and these are the hard requirements of the package's own units.
+    for f in $(dpkg -L "$pkg" | grep '^/usr/lib/systemd/user/.*\.\(target\|service\|conf\)$'); do
+        units="$units $(sed -n 's/^\(Requires\|BindsTo\|Requisite\)=//p' "$f" | tr ' ' '\n')"
+    done
+    for unit in $(echo "$units" | tr ' ' '\n' | grep . | sort -u); do
+        if ! file=$(unit_file "$unit"); then
+            echo "FAIL: $pkg: $unit is not installed"
+            fail=1
+            continue
+        fi
+        owner=$(dpkg -S "$file" 2>/dev/null | sed 's/:.*//' | head -n 1)
+        case $owner in
+            "$pkg"|regolith-session-common)
+                echo "ok: $pkg: $unit ($file) is shipped by $owner" ;;
+            "")
+                echo "FAIL: $pkg: $file belongs to no package"; fail=1 ;;
+            *)
+                if echo "$depends" | grep -qx "$owner"; then
+                    echo "ok: $pkg: $unit ($file) is in $owner, a dependency"
+                else
+                    echo "FAIL: $pkg: $unit ($file) is in $owner, which $pkg does not depend on"
+                    fail=1
+                fi ;;
+        esac
+    done
+}
+
+check regolith-session-flashback regolith-x11
+check regolith-session-sway regolith-wayland
+
+exit $fail
