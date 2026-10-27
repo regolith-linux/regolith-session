@@ -27,9 +27,10 @@ load_sway_resources() {
 }
 
 load_i3_resources() {
-    load_standard_xres # Load first to allow override of default look
-    load_regolith_xres # Find all Xresource partials and merge them
-    load_standard_xres # Re-apply any values that may have been overwritten
+    # The same order as the login (regolith-session-x11): ~/.Xresources first,
+    # then the Regolith Xresources and the look, which win over it
+    load_standard_xres # ~/.Xresources
+    load_regolith_xres # ~/.config/regolith3/Xresources and the look
 
     # Change the quotes in workspace names from double to to single.
     # Due to a limitation of the preprocessor they have double quotes.

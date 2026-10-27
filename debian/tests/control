@@ -52,6 +52,15 @@ Depends: regolith-session-sway,
          systemd
 Restrictions: allow-stderr
 
+Tests: look-refresh-order
+Depends: regolith-session-flashback,
+         regolith-look-default,
+         dbus,
+         xvfb,
+         x11-xserver-utils,
+         xrescat
+Restrictions: allow-stderr
+
 Tests: lock-screen-keys
 Depends: regolith-session-flashback,
          gsettings-desktop-schemas,

@@ -1,0 +1,57 @@
+#!/bin/sh
+# 'regolith-look refresh' in the X11 session must leave the X resources as
+# the login does. The login merges ~/.Xresources, then the user's
+# ~/.config/regolith3/Xresources, the look and that file again, so the
+# Regolith file wins over the look, and the look over ~/.Xresources.
+# Runs both under Xvfb, with i3-msg stubbed out, and compares a value set in
+# all three places and a value set in ~/.Xresources and the look.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
+mkdir -p "$HOME/.config/regolith3/flags" "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+fail=0
+
+printf 'regolith.autopkgtest.key: from-home\nwm.gaps.inner.size: 33\n' > "$HOME/.Xresources"
+printf 'regolith.autopkgtest.key: from-regolith\n' > "$HOME/.config/regolith3/Xresources"
+printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/i3-msg"
+chmod +x "$tmp/bin/i3-msg"
+
+Xvfb :98 -screen 0 1280x800x24 -nolisten tcp -noreset >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+export DISPLAY=:98
+for _ in 1 2 3 4 5 6 7 8 9 10; do xrdb -query >/dev/null 2>&1 && break; sleep 0.5; done
+
+look_gaps=$(sed -n 's/^#define i3wm_gaps_inner_size *//p' /usr/share/regolith-look/default/wm)
+
+values() {
+    echo "$(xrescat regolith.autopkgtest.key none) $(xrescat wm.gaps.inner.size none)"
+}
+
+# The login path, as regolith-session-x11 runs it
+bash -c 'set -Eeu -o pipefail
+         . /usr/lib/regolith/regolith-session-common.sh
+         load_standard_xres
+         load_regolith_xres'
+login=$(values)
+if [ "$login" = "from-regolith $look_gaps" ]; then
+    echo "ok: login: $login"
+else
+    echo "FAIL: login gives '$login', expected 'from-regolith $look_gaps'"
+    fail=1
+fi
+
+# A refresh in that session, with nothing changed
+PATH="$tmp/bin:$PATH" dbus-run-session -- regolith-look refresh >"$tmp/refresh.log" 2>&1 \
+    || { cat "$tmp/refresh.log"; echo "FAIL: regolith-look refresh failed"; fail=1; }
+refresh=$(values)
+if [ "$refresh" = "$login" ]; then
+    echo "ok: refresh: $refresh"
+else
+    echo "FAIL: refresh gives '$refresh', the login gave '$login'"
+    fail=1
+fi
+
+exit $fail
