@@ -68,6 +68,12 @@ Depends: regolith-session-flashback,
          desktop-file-utils
 Restrictions: allow-stderr
 
+Tests: wayland-autostart
+Depends: regolith-session-sway,
+         python3,
+         libglib2.0-0t64 | libglib2.0-0
+Restrictions: allow-stderr
+
 Tests: xft-dpi
 Depends: regolith-session-common,
          gnome-settings-daemon,
