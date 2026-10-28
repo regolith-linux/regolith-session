@@ -1,3 +1,24 @@
+regolith-session (1.2.3-1) noble; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * fix: hide the distro picom autostart entry in the Regolith sessions (#71)
+  * fix: do not open GNOME Initial Setup in the Regolith sessions (#70)
+  * fix: honour Xft.dpi, apply the look once, keep the default look across look updates (#72)
+  * fix: report a missing look instead of an unbound variable error (#75)
+  * fix: recommend regolith-default-settings from the sway session (#73)
+  * fix: take the system keyboard layout on a first Wayland login (#78)
+  * fix: keep the PATH from ~/.profile when gnome-session runs the session itself (#80)
+  * fix: keep dead keys working in X11 applications in the Wayland session (#82)
+  * fix(debian): let plain apt upgrade move the sway session forward (#84)
+  * fix: tell Java applications that sway does not reparent windows (#83)
+  * fix: keep non-ASCII text in Xresources values (#85)
+  * fix(debian): drop the unused clipman dependency (#79)
+
+  [ rego-port-bot ]
+  * fix: give the Wayland session its desktop names (#76)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Tue, 27 Oct 2026 12:00:00 -0700
+
 regolith-session (1.2.2-1) noble; urgency=medium
 
   [ Carlos Fernandez Sanz ]
