@@ -1,0 +1,69 @@
+#!/bin/sh
+# The sway session puts SWAYSOCK and I3SOCK into the systemd user
+# environment. When the user manager outlives the session, the next session
+# must not inherit them: i3 would create its IPC socket at the dead sway
+# socket's path, and SWAYSOCK would tell tools they run under sway.
+#  1. The session units remove both variables when they stop.
+#  2. Both session scripts start the window manager without them, even when
+#     they are still in the environment. The window managers are stubbed out.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+fail=0
+
+for unit in /usr/lib/systemd/user/regolith-wayland.service \
+            /usr/lib/systemd/user/regolith-x11.service; do
+    for var in SWAYSOCK I3SOCK; do
+        if grep '^ExecStopPost=.*unset-environment' "$unit" | grep -qw "$var"; then
+            echo "ok: $unit unsets $var when it stops"
+        else
+            echo "FAIL: $unit does not unset $var when it stops"
+            fail=1
+        fi
+    done
+done
+
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$HOME/.config/regolith3/flags" "$XDG_RUNTIME_DIR" "$tmp/bin"
+chmod 700 "$XDG_RUNTIME_DIR"
+for wm in i3 sway; do
+    printf '#!/bin/sh\nenv > "%s/%s.env"\n' "$tmp" "$wm" > "$tmp/bin/$wm"
+    chmod +x "$tmp/bin/$wm"
+done
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true; pkill -u "$(id -u)" -x trawld 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+
+cat > "$tmp/run" <<'EOF2'
+#!/bin/sh
+set -eu
+t=$AUTOPKGTEST_TMP
+stale=$XDG_RUNTIME_DIR/sway-ipc.1000.4242.sock
+env -u NOTIFY_SOCKET PATH="$t/bin:$PATH" I3SOCK="$stale" SWAYSOCK="$stale" \
+    XDG_SESSION_TYPE=x11 DISPLAY=":$DISPLAY_NUMBER" \
+    timeout 60 regolith-session-x11 > "$t/x11.log" 2>&1 || cat "$t/x11.log"
+env -u NOTIFY_SOCKET -u DISPLAY PATH="$t/bin:$PATH" I3SOCK="$stale" SWAYSOCK="$stale" \
+    XDG_SESSION_TYPE=wayland \
+    timeout 60 regolith-session-wayland > "$t/wayland.log" 2>&1 || cat "$t/wayland.log"
+EOF2
+chmod +x "$tmp/run"
+AUTOPKGTEST_TMP="$tmp" DISPLAY_NUMBER="$display" dbus-run-session -- "$tmp/run"
+
+for wm in i3 sway; do
+    if [ ! -f "$tmp/$wm.env" ]; then
+        echo "FAIL: the $wm stub did not run"; fail=1; continue
+    fi
+    for var in I3SOCK SWAYSOCK; do
+        if grep -q "^$var=" "$tmp/$wm.env"; then
+            echo "FAIL: $wm started with the earlier session's $(grep "^$var=" "$tmp/$wm.env")"
+            fail=1
+        else
+            echo "ok: $wm started without $var"
+        fi
+    done
+done
+exit $fail

@@ -33,6 +33,7 @@ if [ -z "${NOTIFY_SOCKET-}" ]; then
 fi
 
 # --------- Script Main -----------
+clear_wm_sockets    # SWAYSOCK and I3SOCK of an earlier session
 
 gdm3_xrdb_fixup     # Remove when https://bugs.launchpad.net/ubuntu/+source/gdm3/+bug/1955850 is fixed
 load_standard_xres  # ~/.Xresources
