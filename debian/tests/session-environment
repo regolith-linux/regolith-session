@@ -4,8 +4,11 @@
 # environment.d variables to the window manager's environment. The login
 # environment must win, as in the systemd-managed session: PATH from
 # ~/.profile must survive the PATH that /etc/environment sets through
-# environment.d. Runs both scripts with the window manager stubbed out.
+# environment.d. Runs the scripts of the sessions given as arguments
+# (x11, wayland) with the window manager stubbed out.
 set -eu
+
+sessions=${*:-x11 wayland}
 
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
 export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg"
@@ -28,12 +31,16 @@ for wm in i3 sway; do
     chmod +x "$tmp/bin/$wm"
 done
 
-Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
-    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
-xvfb=$!
+xvfb=
 trap 'kill $xvfb 2>/dev/null || true; pkill -u "$(id -u)" -x trawld 2>/dev/null || true' EXIT
-for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
-display=$(cat "$tmp/display")
+display=
+case " $sessions " in *" x11 "*)
+    Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+        3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+    xvfb=$!
+    for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+    display=$(cat "$tmp/display")
+esac
 
 cat > "$tmp/run" <<'EOF'
 #!/bin/sh
@@ -54,16 +61,22 @@ check() { # check <wm> <variable> <expected value>
 }
 
 # No NOTIFY_SOCKET: the session is not a systemd service (gnome-session --builtin)
-env -u NOTIFY_SOCKET PATH="$login_path" ENVD_AND_LOGIN=from-login \
-    XDG_SESSION_TYPE=x11 DISPLAY=":$DISPLAY_NUMBER" \
-    XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
-    timeout 60 regolith-session-x11 > "$t/x11.log" 2>&1 || { cat "$t/x11.log"; fail=1; }
-
-env -u NOTIFY_SOCKET -u DISPLAY PATH="$login_path" ENVD_AND_LOGIN=from-login \
-    XDG_SESSION_TYPE=wayland \
-    timeout 60 regolith-session-wayland > "$t/wayland.log" 2>&1 || { cat "$t/wayland.log"; fail=1; }
-
-for wm in i3 sway; do
+for session in $SESSIONS; do
+    case $session in
+    x11)
+        wm=i3
+        env -u NOTIFY_SOCKET PATH="$login_path" ENVD_AND_LOGIN=from-login \
+            XDG_SESSION_TYPE=x11 DISPLAY=":$DISPLAY_NUMBER" \
+            XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
+            timeout 60 regolith-session-x11 > "$t/x11.log" 2>&1 || { cat "$t/x11.log"; fail=1; } ;;
+    wayland)
+        wm=sway
+        env -u NOTIFY_SOCKET -u DISPLAY PATH="$login_path" ENVD_AND_LOGIN=from-login \
+            XDG_SESSION_TYPE=wayland \
+            timeout 60 regolith-session-wayland > "$t/wayland.log" 2>&1 || { cat "$t/wayland.log"; fail=1; } ;;
+    *)
+        echo "FAIL: unknown session '$session'"; fail=1; continue ;;
+    esac
     if [ ! -f "$t/$wm.env" ]; then
         echo "FAIL: the $wm stub did not run: the login PATH was replaced"; fail=1; continue
     fi
@@ -76,4 +89,4 @@ exit $fail
 EOF
 chmod +x "$tmp/run"
 
-AUTOPKGTEST_TMP="$tmp" DISPLAY_NUMBER="$display" dbus-run-session -- "$tmp/run"
+AUTOPKGTEST_TMP="$tmp" DISPLAY_NUMBER="$display" SESSIONS="$sessions" dbus-run-session -- "$tmp/run"

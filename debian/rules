@@ -1,5 +1,12 @@
 #!/usr/bin/make -f
 
-%:
-	dh $@
+# This branch is built for Ubuntu 22.04 and Debian 12. Regolith does not
+# build sway-regolith, trawl, regolith-inputd or regolith-displayd for
+# Debian 12, so the sway session could not be installed there: Debian
+# builds get the X11 session only.
+ifeq ($(shell dpkg-vendor --query Vendor),Debian)
+DH_SESSIONS := -Nregolith-session-sway
+endif
 
+%:
+	dh $@ $(DH_SESSIONS)

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Ubuntu 22.04 builds this branch with both sessions. Debian 12 has no
+# Regolith sway build, so debian/rules leaves regolith-session-sway out
+# of Debian builds. Checks which packages a build here would produce,
+# from a dry run of debian/rules, and that Debian gets no Wayland session.
+set -eu
+
+fail=0
+vendor=$(dpkg-vendor --query Vendor)
+opts=$(make -s -n -f debian/rules build-arch | sed -n 's/^dh build-arch//p')
+pkgs=$(dh_listpackages $opts | tr '\n' ' ')
+case $vendor in
+Debian) want=no ;;
+*) want=yes ;;
+esac
+if echo " $pkgs" | grep -q ' regolith-session-sway '; then got=yes; else got=no; fi
+if [ "$got" = "$want" ]; then
+    echo "ok: $vendor builds: $pkgs"
+else
+    echo "FAIL: $vendor builds: $pkgs(regolith-session-sway expected: $want)"; fail=1
+fi
+
+if [ "$vendor" = Debian ]; then
+    found=$(dpkg-query -S /usr/share/wayland-sessions 2>/dev/null || true)
+    if [ -n "$found" ]; then
+        echo "FAIL: a Wayland session is installed on Debian: $found"; fail=1
+    else
+        echo "ok: no Wayland session installed with the X11 session"
+    fi
+fi
+exit $fail
