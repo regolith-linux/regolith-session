@@ -8,6 +8,11 @@ Depends: regolith-session-flashback,
          desktop-file-utils
 Restrictions: allow-stderr
 
+Tests: session-unit-deps
+Depends: regolith-session-flashback,
+         regolith-session-sway
+Restrictions: allow-stderr
+
 Tests: session-environment
 Depends: regolith-session-flashback,
          regolith-session-sway,
