@@ -59,8 +59,11 @@ else
     sway -c "$SWAY_CONFIG_FILE" 
 fi
 
-# Run user's post logout script if script. Post logout means that the wayland session has been terminated.
-if [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
+# Run the user's post-logout script. In a systemd-managed session,
+# regolith-post-logout.service runs it when the session ends: logging out
+# stops this script together with the window manager, so it would never get
+# here. Without systemd (gnome-session --builtin) it runs here.
+if [ -z "${NOTIFY_SOCKET-}" ] && [ -f "$USER_POST_LOGOUT_SCRIPT_FILE" ] ; then
     echo "Regolith is launching user post-logout file $USER_POST_LOGOUT_SCRIPT_FILE"
 	timeout --verbose 5 bash "$USER_POST_LOGOUT_SCRIPT_FILE"
 fi
