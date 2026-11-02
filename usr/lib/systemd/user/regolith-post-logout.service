@@ -1,0 +1,19 @@
+[Unit]
+Description=Run the user's Regolith post-logout script
+# Runs ~/.config/regolith3/logout when the Regolith session ends. The unit is
+# started with the session target and stopped with it, and it runs the
+# script when it stops: at logout, and not when the X11 session restarts i3.
+# The launch scripts can't run it themselves, since stopping the session
+# kills them together with the window manager.
+PartOf=regolith-x11.target regolith-wayland.target
+# Stop after the window manager has stopped (stop order is the reverse)
+Before=regolith-x11.service regolith-wayland.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Slice=session.slice
+ExecStart=/bin/true
+ExecStop=/bin/sh -c 'f=%h/.config/regolith3/logout; [ -f "$$f" ] || exit 0; echo "Regolith is launching user post-logout file $$f"; timeout --verbose 5 bash "$$f"'
+# The script gets 5 seconds, as before
+TimeoutStopSec=10
