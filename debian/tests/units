@@ -115,16 +115,23 @@ expect gnome-session@regolith-x11.target Requires gnome-session-x11-services-rea
 expect gnome-session@regolith-x11.target Wants gnome-flashback-polkit.service
 expect gnome-session@regolith-x11.target Wants gnome-flashback-idle-monitor.service
 
-# 4. Every OnFailure= handler must exist on this release; systemd only logs
-#    "not found" when it cannot enqueue one, and the failure goes unhandled.
+# The Wayland session can't go on without sway, however sway exits.
+expect regolith-wayland.service OnFailure gnome-session-shutdown.target
+expect regolith-wayland.service OnSuccess gnome-session-shutdown.target
+
+# 4. Every OnFailure= and OnSuccess= handler must exist on this release;
+#    systemd only logs "not found" when it cannot enqueue one, and the exit
+#    goes unhandled.
 for unit in $units; do
-    for handler in $(deps "$unit" OnFailure); do
-        if unit_cat "$handler" >/dev/null 2>&1; then
-            echo "ok: $unit OnFailure=$handler exists"
-        else
-            echo "FAIL: $unit OnFailure=$handler not found"
-            fail=1
-        fi
+    for directive in OnFailure OnSuccess; do
+        for handler in $(deps "$unit" $directive); do
+            if unit_cat "$handler" >/dev/null 2>&1; then
+                echo "ok: $unit $directive=$handler exists"
+            else
+                echo "FAIL: $unit $directive=$handler not found"
+                fail=1
+            fi
+        done
     done
 done
 
