@@ -1,0 +1,65 @@
+#!/bin/sh
+# regolith-diagnostic must describe the session it runs in and get to the
+# end, the settings that bug reports ask for, also from a shell without
+# DESKTOP_SESSION (a text console or ssh). In the Wayland session it reports
+# sway, not i3, and works on an install without i3. i3, i3xrocks' tools and
+# the resource tools are stubbed out; the stub i3 records that it ran.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home"
+mkdir -p "$HOME/.config/regolith3" "$tmp/bin"
+fail=0
+
+printf '#!/bin/sh\necho "i3 $*" >> "%s/i3.log"\necho "Binary i3 version:  autopkgtest"\n' "$tmp" > "$tmp/bin/i3"
+printf '#!/bin/sh\necho "xrdb: autopkgtest"\n' > "$tmp/bin/xrdb"
+# Like trawldb, without a newline at the end
+printf '#!/bin/sh\nprintf "trawldb: autopkgtest"\n' > "$tmp/bin/trawldb"
+chmod +x "$tmp/bin/i3" "$tmp/bin/xrdb" "$tmp/bin/trawldb"
+
+run() { # run <session>: regolith-diagnostic without DESKTOP_SESSION
+    rm -f "$tmp/i3.log"
+    rc=0
+    env -u DESKTOP_SESSION XDG_SESSION_TYPE=$1 PATH="$tmp/bin:$PATH" \
+        dbus-run-session -- regolith-diagnostic >"$tmp/out-$1" 2>"$tmp/err-$1" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+        cat "$tmp/err-$1"
+        echo "FAIL: $1: exit status $rc"; fail=1
+    elif ! grep -q '^--- dconf' "$tmp/out-$1"; then
+        echo "FAIL: $1: no dconf section"; fail=1
+    else
+        echo "ok: $1: runs to the end without DESKTOP_SESSION"
+    fi
+}
+has() { # has <session> <text>
+    if grep -qF -- "$2" "$tmp/out-$1"; then echo "ok: $1: reports '$2'"
+    else echo "FAIL: $1: output lacks '$2'"; fail=1; fi
+}
+lacks() { # lacks <session> <text>
+    if grep -qF -- "$2" "$tmp/out-$1"; then echo "FAIL: $1: output has '$2'"; fail=1
+    else echo "ok: $1: does not report '$2'"; fi
+}
+
+run wayland
+has wayland "--- sway"
+if grep -qx -- "--- sway" "$tmp/out-wayland"; then
+    echo "ok: wayland: the sway section starts on its own line"
+else
+    echo "FAIL: wayland: the sway section does not start on its own line"; fail=1
+fi
+has wayland "sway version"
+has wayland "/etc/regolith/sway/config"
+lacks wayland "Binary i3 version"
+lacks wayland "org.gnome.gnome-flashback"
+if [ -e "$tmp/i3.log" ]; then
+    echo "FAIL: wayland: ran $(cat "$tmp/i3.log")"; fail=1
+else
+    echo "ok: wayland: does not run i3"
+fi
+
+run x11
+has x11 "--- i3"
+has x11 "Binary i3 version:  autopkgtest"
+lacks x11 "--- sway"
+
+exit $fail
