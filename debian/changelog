@@ -1,3 +1,14 @@
+regolith-session (1.2.4-1) noble; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * fix(debian): depend on gnome-session-common, which ships the session targets (#89)
+  * fix: keep an earlier session's SWAYSOCK and I3SOCK out of the next one (#91)
+  * fix: make regolith-look refresh merge the X resources in the login order (#93)
+  * fix: run the post-logout script when the session ends (#96)
+  * fix: keep i3 restartable when the session runs gnome-session --builtin (#95)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Wed, 04 Nov 2026 20:21:05 -0800
+
 regolith-session (1.2.3-1) noble; urgency=medium
 
   [ Carlos Fernandez Sanz ]
