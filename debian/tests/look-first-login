@@ -1,19 +1,16 @@
 #!/bin/sh
-# The X11 login path applies the look's desktop settings (GTK theme, fonts,
-# wallpaper) at the first login only. Later logins must keep what the user
-# changed since, such as the wallpaper; 'regolith-look refresh' still applies
-# the look. Runs regolith-session-x11 under Xvfb with i3 stubbed out, three
-# times for three logins of one user.
+# The X11 and Wayland login paths apply the look's desktop settings (GTK
+# theme, fonts, wallpaper) at the first login only. Later logins must keep
+# what the user changed since, such as the wallpaper; 'regolith-look refresh'
+# still applies the look. Runs regolith-session-x11 under Xvfb with i3
+# stubbed out, and regolith-session-wayland with trawld and sway stubbed out,
+# three times each for three logins of one user.
 set -eu
 
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
-export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
-export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
-mkdir -p "$HOME/.config/regolith3" "$XDG_RUNTIME_DIR" "$tmp/bin"
+export XDG_RUNTIME_DIR="$tmp/xdg"
+mkdir -p "$XDG_RUNTIME_DIR" "$tmp/bin"
 chmod 700 "$XDG_RUNTIME_DIR"
-# The default look sets a plain color as wallpaper, so picture-uri is 'none'.
-echo 'regolith.look.path: /usr/share/regolith-look/default' \
-    > "$HOME/.config/regolith3/Xresources"
 
 Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
     3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
@@ -23,34 +20,55 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; don
 display=$(cat "$tmp/display")
 export DISPLAY=":$display"
 
-# The window manager is not under test: the login path ends when i3 returns.
-printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/i3"
-printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/i3-msg"
-chmod +x "$tmp/bin/i3" "$tmp/bin/i3-msg"
+# The window manager is not under test: the login path ends when it returns.
+for stub in i3 i3-msg sway swaymsg; do
+    printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/$stub"
+    chmod +x "$tmp/bin/$stub"
+done
 
 cat > "$tmp/run" <<'EOF'
 #!/bin/sh
+# run <x11|wayland>
 set -eu
-fail=0
+session=$1 fail=0
+export XDG_SESSION_TYPE=$session
+if [ "$session" = x11 ]; then
+    export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
+else
+    export XDG_CURRENT_DESKTOP=Regolith-Wayland:GNOME:sway
+    trawld >/dev/null 2>&1 &
+    trap "kill $! 2>/dev/null || true" EXIT
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        trawldb -q >/dev/null 2>&1 && break; sleep 0.5
+    done
+fi
+mkdir -p "$HOME/.config/regolith3"
+# The default look sets a plain color as wallpaper, so picture-uri is 'none'.
+echo 'regolith.look.path: /usr/share/regolith-look/default' \
+    > "$HOME/.config/regolith3/Xresources"
 custom="file://$HOME/custom.png"
 
-login() { # login <n>: a fresh X resource database, then the X11 login path
-    echo 'autopkgtest.display: ready' | xrdb -load
-    # NOTIFY_SOCKET marks the systemd-managed session (regolith-x11.service),
-    # which keeps PATH.
+login() { # login <n>: a fresh resource database, then the login path
+    if [ "$session" = x11 ]; then
+        echo 'autopkgtest.display: ready' | xrdb -load
+    else
+        trawldb --remove
+    fi
+    # NOTIFY_SOCKET marks the systemd-managed session (regolith-x11.service,
+    # regolith-wayland.service), which keeps PATH and runs trawld itself.
     if ! NOTIFY_SOCKET="$AUTOPKGTEST_TMP/notify" PATH="$AUTOPKGTEST_TMP/bin:$PATH" \
-         timeout 60 regolith-session-x11 >"$AUTOPKGTEST_TMP/login$1.log" 2>&1; then
+         timeout 60 "regolith-session-$session" >"$AUTOPKGTEST_TMP/login$1.log" 2>&1; then
         cat "$AUTOPKGTEST_TMP/login$1.log"
-        echo "FAIL: login $1 did not complete"
+        echo "FAIL: $session: login $1 did not complete"
         fail=1
     fi
 }
 wallpaper() { gsettings get org.gnome.desktop.background picture-uri; }
 expect() { # expect <what> <picture-uri>
     if [ "$(wallpaper)" = "$2" ]; then
-        echo "ok: $1: wallpaper $2"
+        echo "ok: $session: $1: wallpaper $2"
     else
-        echo "FAIL: $1: wallpaper $(wallpaper), expected $2"
+        echo "FAIL: $session: $1: wallpaper $(wallpaper), expected $2"
         fail=1
     fi
 }
@@ -73,4 +91,10 @@ exit $fail
 EOF
 chmod +x "$tmp/run"
 
-AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run"
+fail=0
+for session in x11 wayland; do
+    # dconf runs on the session bus, so HOME is set for the bus as well
+    HOME="$tmp/home-$session" AUTOPKGTEST_TMP="$tmp" \
+        dbus-run-session -- "$tmp/run" $session || fail=1
+done
+exit $fail
