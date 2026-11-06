@@ -44,7 +44,8 @@ refresh() {
         load_sway_resources
         swaymsg -t send_tick '{"status": "reload_pending"}'
     else
-	    load_i3_resources
+        clear_xres # rebuild the resources from scratch, as the login does
+        load_i3_resources
     fi
 
     # Determine if Look loader script is available
