@@ -1,0 +1,44 @@
+#!/bin/sh
+# The two sessions use different bars: i3xrocks in X11, where each block is a
+# package that regolith-session-flashback recommends (remove the package to
+# drop the block), and i3status-rs in Wayland, whose blocks are listed in
+# /etc/regolith/i3status-rust/config.toml. Check that both show the same
+# blocks by default, so a block added to or dropped from one bar is not
+# forgotten in the other.
+set -eu
+
+config=/etc/regolith/i3status-rust/config.toml
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+
+# i3xrocks blocklet package -> i3status-rs block
+block_for() {
+    case "$1" in
+        i3xrocks-battery) echo battery ;;
+        i3xrocks-cpu-usage) echo cpu ;;
+        i3xrocks-disk-capacity) echo disk_space ;;
+        i3xrocks-memory) echo memory ;;
+        i3xrocks-net-traffic) echo net ;;
+        i3xrocks-rofication) echo rofication ;;
+        i3xrocks-time) echo time ;;
+        i3xrocks-volume) echo sound ;;
+        *) echo "unknown:$1" ;;
+    esac
+}
+
+dpkg-query -W -f '${Recommends}\n' regolith-session-flashback \
+    | tr ',|' '\n\n' | sed 's/(.*//; s/[[:space:]]//g' \
+    | grep '^i3xrocks-' | sort -u > "$tmp/x11-packages"
+while read -r pkg; do block_for "$pkg"; done < "$tmp/x11-packages" \
+    | sort -u > "$tmp/x11"
+
+sed -n 's/^[[:space:]]*block[[:space:]]*=[[:space:]]*"\([a-z_]*\)".*/\1/p' "$config" \
+    | sort -u > "$tmp/wayland"
+
+echo "X11 (regolith-session-flashback Recommends): $(tr '\n' ' ' < "$tmp/x11")"
+echo "Wayland ($config): $(tr '\n' ' ' < "$tmp/wayland")"
+
+if ! diff -u "$tmp/x11" "$tmp/wayland"; then
+    echo "FAIL: the X11 and Wayland bars show different blocks by default" >&2
+    exit 1
+fi
+echo "PASS: both bars show the same blocks"
