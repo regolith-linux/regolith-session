@@ -90,6 +90,10 @@ Depends: regolith-session-flashback,
          desktop-file-utils
 Restrictions: allow-stderr
 
+Tests: xdg-terminals
+Depends: regolith-session-flashback
+Restrictions: allow-stderr, skippable
+
 Tests: wayland-autostart
 Depends: regolith-session-sway,
          python3,

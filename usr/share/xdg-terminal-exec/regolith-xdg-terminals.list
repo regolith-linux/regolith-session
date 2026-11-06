@@ -1,0 +1,6 @@
+# Terminals for the Regolith X11 session (XDG_CURRENT_DESKTOP=Regolith:...),
+# read by xdg-terminal-exec before the GNOME list. foot runs only under
+# Wayland, so never pick it here.
+-foot.desktop
+-footclient.desktop
+-foot-server.desktop

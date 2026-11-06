@@ -1,0 +1,67 @@
+#!/bin/sh
+# In the X11 session, xdg-terminal-exec (GLib's Terminal=true launches,
+# Nautilus' "Open in Terminal") must not pick foot, which runs only under
+# Wayland; the Wayland session can still pick it. Uses throwaway desktop
+# entries: foot's come first in the search path, as they could on any
+# system, and the other terminal records the directory it starts in.
+set -eu
+
+if ! command -v xdg-terminal-exec >/dev/null 2>&1; then
+    echo "xdg-terminal-exec is not available on this release"
+    exit 77
+fi
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/home/.config" XDG_CACHE_HOME="$tmp/cache"
+export XDG_DATA_HOME="$tmp/home/.local/share" XDG_DATA_DIRS="$tmp/share:/usr/share"
+export XDG_CONFIG_DIRS="$tmp/etc"
+mkdir -p "$XDG_DATA_HOME/applications" "$tmp/share/applications" "$tmp/etc" "$tmp/bin" "$tmp/dir"
+fail=0
+
+entry() { # entry <file> <name> <exec>
+    cat > "$2" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$1
+Exec=$3
+Categories=System;TerminalEmulator;
+EOF
+}
+for foot in foot footclient foot-server; do
+    entry "$foot" "$XDG_DATA_HOME/applications/$foot.desktop" "$tmp/bin/foot"
+done
+printf '#!/bin/sh\npwd > "%s/started-in"\n' "$tmp" > "$tmp/bin/term"
+printf '#!/bin/sh\nexit 230\n' > "$tmp/bin/foot"
+chmod +x "$tmp/bin/term" "$tmp/bin/foot"
+entry "Autopkgtest Terminal" "$tmp/share/applications/autopkgtest-term.desktop" "$tmp/bin/term"
+
+pick() { # pick <XDG_CURRENT_DESKTOP>
+    rm -rf "$XDG_CACHE_HOME"
+    XDG_CURRENT_DESKTOP=$1 xdg-terminal-exec --print-id 2>/dev/null || echo "(none)"
+}
+
+got=$(pick Regolith:GNOME-Flashback:GNOME)
+if [ "$got" = autopkgtest-term.desktop ]; then
+    echo "ok: X11 session picks $got"
+else
+    echo "FAIL: X11 session picks $got, expected autopkgtest-term.desktop"; fail=1
+fi
+
+rm -rf "$XDG_CACHE_HOME"
+rc=0
+(cd / && XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME \
+     xdg-terminal-exec --dir="$tmp/dir") >"$tmp/out" 2>&1 || rc=$?
+if [ "$rc" -eq 0 ] && [ "$(cat "$tmp/started-in" 2>/dev/null)" = "$tmp/dir" ]; then
+    echo "ok: X11 session: --dir starts the terminal in that directory"
+else
+    echo "FAIL: X11 session: --dir: exit $rc, started in '$(cat "$tmp/started-in" 2>/dev/null)': $(cat "$tmp/out")"
+    fail=1
+fi
+
+got=$(pick Regolith-Wayland:GNOME:sway)
+case $got in
+    foot*.desktop) echo "ok: Wayland session can pick $got" ;;
+    *) echo "FAIL: Wayland session picks $got, expected a foot entry"; fail=1 ;;
+esac
+
+exit $fail
