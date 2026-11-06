@@ -12,10 +12,14 @@ print_file() {
   fi
 }
 
+print_settings() {
+  gsettings list-recursively "$1" 2>/dev/null || echo "--- [schema $1 is not installed]"
+}
+
 echo "--- Regolith Diagnostic - $(date)"
 print_file /etc/regolith/version
-echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
-echo "DESKTOP_SESSION=$DESKTOP_SESSION"
+echo "XDG_SESSION_TYPE=${XDG_SESSION_TYPE-}"
+echo "DESKTOP_SESSION=${DESKTOP_SESSION-}"
 
 echo "--- System Info "
 uname -a
@@ -27,16 +31,24 @@ print_file "$HOME/.Xresources"
 print_file "$HOME/.config/regolith3/Xresources"
 print_file "$HOME/.cache/regolith3/Xresources-generated"
 
-if [ $XDG_SESSION_TYPE == "wayland" ]; then
-  trawldb -q
-else
-  xrdb -query
-fi
+if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
+  trawldb -q || true
+  echo # trawldb does not end its output with a newline
 
-echo "--- i3"
-i3 --moreversion
-print_file "/etc/regolith/i3/config"
-ls -l /usr/share/regolith/i3/config.d/
+  echo "--- sway"
+  sway --version || true
+  print_file "/etc/regolith/sway/config"
+  print_file "$HOME/.config/regolith3/sway/config"
+  ls -l /usr/share/regolith/sway/config.d/ || true
+else
+  xrdb -query || true
+
+  echo "--- i3"
+  i3 --moreversion || true
+  print_file "/etc/regolith/i3/config"
+  print_file "$HOME/.config/regolith3/i3/config"
+  ls -l /usr/share/regolith/i3/config.d/ || true
+fi
 
 if [ -d "/usr/share/i3xrocks" ]; then
   echo "--- i3xrocks config"
@@ -46,11 +58,13 @@ else
 fi
 
 echo "--- dconf"
-gsettings list-recursively org.gnome.desktop.interface
-gsettings list-recursively org.gnome.desktop.background
-gsettings list-recursively org.gnome.gnome-flashback
-gsettings list-recursively org.regolith-linux.ilia
-gsettings list-recursively org.gnome.desktop.wm.keybindings
-gsettings list-recursively org.gnome.settings-daemon.plugins.media-keys
-gsettings list-recursively org.gnome.desktop.wm.preferences
+print_settings org.gnome.desktop.interface
+print_settings org.gnome.desktop.background
+if [ "${XDG_SESSION_TYPE-}" != "wayland" ]; then
+  print_settings org.gnome.gnome-flashback
+fi
+print_settings org.regolith-linux.ilia
+print_settings org.gnome.desktop.wm.keybindings
+print_settings org.gnome.settings-daemon.plugins.media-keys
+print_settings org.gnome.desktop.wm.preferences
 

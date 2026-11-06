@@ -147,6 +147,13 @@ Tests: look-set
 Depends: regolith-session-common
 Restrictions: allow-stderr
 
+Tests: diagnostic
+Depends: regolith-session-common,
+         regolith-session-sway,
+         dbus,
+         libglib2.0-bin
+Restrictions: allow-stderr
+
 Tests: upgrade-relations
 Depends: regolith-session-common,
          regolith-session-flashback,
