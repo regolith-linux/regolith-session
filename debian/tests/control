@@ -74,6 +74,17 @@ Depends: regolith-session-flashback,
          xrescat
 Restrictions: allow-stderr
 
+Tests: look-switch-stale
+Depends: regolith-session-common,
+         x11-xserver-utils,
+         xvfb,
+         dbus,
+         libglib2.0-bin,
+         trawld,
+         trawldb,
+         trawlcat
+Restrictions: allow-stderr
+
 Tests: lock-screen-keys
 Depends: regolith-session-flashback,
          gsettings-desktop-schemas,

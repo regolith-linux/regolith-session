@@ -19,35 +19,32 @@ COMMAND=$1
 
 WM_RELOAD="i3-msg -q restart"
 
-load_sway_resources() {
-    load_standard_trawlres
-    load_regolith_trawlres
-    load_regolith_trawlres
-    trawl_sway_cleanup
-}
-
-load_i3_resources() {
-    # The same order as the login (regolith-session-x11): ~/.Xresources first,
-    # then the Regolith Xresources and the look, which win over it
-    load_standard_xres # ~/.Xresources
-    load_regolith_xres # ~/.config/regolith3/Xresources and the look
-
-    # Change the quotes in workspace names from double to to single.
-    # Due to a limitation of the preprocessor they have double quotes.
-    # The i3-wm workspace command fails with double quotes in the name
-    xres_i3_cleanup
-
-    # gsd-xsettings replaces Xft.dpi with its own value; make that the user's
-    apply_user_xft_dpi
+# sway's reload applies default_border, default_floating_border and the gaps
+# only to windows and workspaces created afterwards, while i3's restart applies
+# them to the open ones too. Give the open windows and workspaces what a new
+# one gets from Regolith's sway config: the default borders, the border its
+# for_window rule sets on every window, and the gaps. sway expands the config's
+# variables in these commands. A command that matches no window, or whose
+# variables the config doesn't set, fails and is skipped.
+sway_restyle_existing() {
+    local cmd
+    for cmd in \
+        '[tiling] border $wm.window.border.style $wm.window.border.size' \
+        '[floating] border $wm.floatingwindow.border.style $wm.floatingwindow.border.size' \
+        '[title=".*"] border pixel $wm.window.border.size' \
+        'gaps inner all set $wm.gaps.inner.size' \
+        'gaps outer all set $wm.gaps.outer.size'; do
+        swaymsg -q "$cmd" >/dev/null 2>&1 || true
+    done
 }
 
 refresh() {
     if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         WM_RELOAD="swaymsg reload"
-        load_sway_resources
+        reload_sway_resources
         swaymsg -t send_tick '{"status": "reload_pending"}'
     else
-	    load_i3_resources
+        reload_i3_resources
     fi
 
     # Determine if Look loader script is available
@@ -60,6 +57,9 @@ refresh() {
 
         # restart window manager after merging Xresources
         $WM_RELOAD
+        if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
+            sway_restyle_existing
+        fi
     else
         echo "No look loader script specified, no UI changes"
     fi
@@ -84,13 +84,7 @@ set_look() {
     # add new declaration
     echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
-    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
-        echo "setting for wayland"
-        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
-    else
-        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$USER_XRESOURCE_OVERRIDE_FILE"
-    fi
-    # The new look must be loaded into Xresources before refresh occurs
+    # refresh rebuilds the resources from the files, so it reads the new look
     refresh
 }
 

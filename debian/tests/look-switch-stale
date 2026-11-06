@@ -1,0 +1,147 @@
+#!/bin/sh
+# 'regolith-look set' and 'regolith-look refresh' rebuild the resources from
+# scratch, so they leave what a fresh login gives: a resource that only the
+# previous look set, or that the user removed from their Xresources, goes
+# away, the user's own values stay, and the whole database equals a fresh
+# login's. In X11, gsd-xsettings' Xft.* stays. Resources merged by hand,
+# outside any file, go. Checks the X11 (xrdb) and Wayland (trawl) load paths,
+# with two user looks and the window managers stubbed out. The flags
+# directory is there, so the logins don't run the look loader.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home"
+looks="$HOME/.config/regolith3/looks"
+mkdir -p "$looks/autopkgtest-a" "$looks/autopkgtest-b" "$tmp/bin"
+
+# Look a sets a.only and an empty value; look b sets neither. Their loader
+# does nothing.
+printf 'load_look() { :; }\n' > "$looks/loader.sh"
+printf 'regolith.look.loader: %s\nautopkgtest.shared: a\nautopkgtest.a.only: a\nautopkgtest.a.empty:\n' \
+    "$looks/loader.sh" > "$looks/autopkgtest-a/root"
+printf 'regolith.look.loader: %s\nautopkgtest.shared: b\n' \
+    "$looks/loader.sh" > "$looks/autopkgtest-b/root"
+mkdir -p "$HOME/.config/regolith3/flags"
+for stub in i3 i3-msg sway swaymsg; do
+    printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/$stub"
+    chmod +x "$tmp/bin/$stub"
+done
+
+Xvfb -displayfd 3 -screen 0 640x480x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+export DISPLAY=":$(cat "$tmp/display")"
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/bash
+# run <x11|wayland>
+set -eu
+session=$1 fail=0
+export XDG_SESSION_TYPE=$session XDG_RUNTIME_DIR="$AUTOPKGTEST_TMP/xdg-$session"
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+printf 'autopkgtest.home: home\n' > "$HOME/.Xresources"
+printf 'autopkgtest.user: user\nautopkgtest.user.removed: user\n' \
+    > "$HOME/.config/regolith3/Xresources"
+
+if [ "$session" = x11 ]; then
+    # What the display manager and gsd-xsettings put there before the login
+    fresh() {
+        xrdb -remove
+        for f in /etc/X11/Xresources/*; do
+            [ ! -f "$f" ] || xrdb -nocpp -merge "$f"
+        done
+        echo 'Xft.dpi: 120' | xrdb -nocpp -merge
+    }
+    get() { xrdb -query | sed -n "s/^$1:[[:space:]]*//p"; }
+    has() { xrdb -query | grep -q "^$1:"; }
+    dump() { xrdb -query; }
+    merge() { echo "$1" | xrdb -nocpp -merge; }
+    login=regolith-session-x11
+else
+    trawld >/dev/null 2>&1 &
+    trap "kill $! 2>/dev/null || true" EXIT
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        trawldb -q >/dev/null 2>&1 && break; sleep 0.5
+    done
+    fresh() { trawldb --remove; } # a new trawld
+    get() { trawldb -q | sed -n "s/^$1[[:space:]]*:[[:space:]]*//p"; }
+    has() { trawldb -q | grep -q "^$1[[:space:]]*:"; }
+    dump() { trawldb -q; echo; }
+    merge() { echo "$1" > "$AUTOPKGTEST_TMP/merge"; trawldb --nocpp --merge "$AUTOPKGTEST_TMP/merge"; }
+    login=regolith-session-wayland
+fi
+login() { # the login path, with the window manager stubbed out
+    NOTIFY_SOCKET="$AUTOPKGTEST_TMP/notify" PATH="$AUTOPKGTEST_TMP/bin:$PATH" \
+        $login >"$AUTOPKGTEST_TMP/login.log" 2>&1 \
+        || { cat "$AUTOPKGTEST_TMP/login.log"; echo "FAIL: $session: $login failed"; fail=1; }
+}
+look() { PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look "$@" >"$AUTOPKGTEST_TMP/look.log" 2>&1 \
+             || { cat "$AUTOPKGTEST_TMP/look.log"; echo "FAIL: $session: regolith-look $* failed"; fail=1; }; }
+gone() { # gone <step> <name>
+    if has "$2"; then echo "FAIL: $session: $1: $2 is still set to '$(get "$2")'"; fail=1
+    else echo "ok: $session: $1: $2 is gone"; fi
+}
+is() { # is <step> <name> <value>
+    if [ "$(get "$2")" = "$3" ]; then echo "ok: $session: $1: $2 is '$3'"
+    else echo "FAIL: $session: $1: $2 is '$(get "$2")', expected '$3'"; fail=1; fi
+}
+
+same_as_login() { # same_as_login <step>: the database equals a fresh login's
+    dump > "$AUTOPKGTEST_TMP/after"
+    fresh
+    login
+    dump > "$AUTOPKGTEST_TMP/login"
+    if cmp -s "$AUTOPKGTEST_TMP/after" "$AUTOPKGTEST_TMP/login"; then
+        echo "ok: $session: $1: the resources equal a fresh login's"
+    else
+        echo "FAIL: $session: $1: the resources differ from a fresh login's:"
+        diff "$AUTOPKGTEST_TMP/login" "$AUTOPKGTEST_TMP/after" || true
+        fail=1
+    fi
+}
+
+echo "regolith.look.path: $HOME/.config/regolith3/looks/autopkgtest-a" \
+    >> "$HOME/.config/regolith3/Xresources"
+fresh
+if [ "$session" = wayland ]; then
+    # trawld outlives a session; the login starts from an empty database
+    merge 'autopkgtest.earlier.session: old'
+    login
+    gone "login" autopkgtest.earlier.session
+else
+    login
+fi
+merge 'autopkgtest.by.hand: hand'
+is "login with look a" autopkgtest.a.only a
+
+look set autopkgtest-b
+is "set b" autopkgtest.shared b
+gone "set b" autopkgtest.a.only
+gone "set b" autopkgtest.a.empty
+gone "set b" autopkgtest.by.hand
+is "set b" autopkgtest.home home
+is "set b" autopkgtest.user user
+[ "$session" != x11 ] || is "set b" Xft.dpi 120
+same_as_login "set b"
+
+look set autopkgtest-a
+is "set a again" autopkgtest.a.only a
+same_as_login "set a again"
+
+sed -i '/^autopkgtest.user.removed/d' "$HOME/.config/regolith3/Xresources"
+look refresh
+gone "refresh after removing a line" autopkgtest.user.removed
+is "refresh after removing a line" autopkgtest.user user
+same_as_login "refresh"
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+fail=0
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" x11 || fail=1
+rm -f "$HOME/.Xresources" "$HOME/.config/regolith3/Xresources"
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" wayland || fail=1
+exit $fail
