@@ -3,6 +3,10 @@ Description=Regolith Session for Sway
 # On wayland, force a session shutdown
 OnFailure=gnome-session-shutdown.target
 OnFailureJobMode=replace-irreversibly
+# sway exits successfully when told to ('swaymsg exit'); end the session then
+# too, as the session can't go on without it
+OnSuccess=gnome-session-shutdown.target
+OnSuccessJobMode=replace-irreversibly
 CollectMode=inactive-or-failed
 RefuseManualStart=on
 RefuseManualStop=on

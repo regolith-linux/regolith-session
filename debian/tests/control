@@ -111,7 +111,11 @@ Restrictions: allow-stderr
 
 Tests: look-first-login
 Depends: regolith-session-flashback,
+         regolith-session-sway,
          regolith-look-default,
+         trawld,
+         trawldb,
+         trawlcat,
          gsettings-desktop-schemas,
          dconf-gsettings-backend,
          libglib2.0-bin,
