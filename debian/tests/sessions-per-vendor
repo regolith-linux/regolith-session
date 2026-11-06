@@ -2,7 +2,8 @@
 # Ubuntu 22.04 builds this branch with both sessions. Debian 12 has no
 # Regolith sway build, so debian/rules leaves regolith-session-sway out
 # of Debian builds. Checks which packages a build here would produce,
-# from a dry run of debian/rules, and that Debian gets no Wayland session.
+# from a dry run of debian/rules, and that on Debian none of them installs
+# or pulls in a Wayland session.
 set -eu
 
 fail=0
@@ -20,12 +21,24 @@ else
     echo "FAIL: $vendor builds: $pkgs(regolith-session-sway expected: $want)"; fail=1
 fi
 
+# Checks the packages built here, not the whole testbed: autopkgtest's
+# null testbed keeps what earlier tests installed, and an archive can still
+# carry a regolith-session-sway from an older build of this source.
 if [ "$vendor" = Debian ]; then
-    found=$(dpkg-query -S /usr/share/wayland-sessions 2>/dev/null || true)
-    if [ -n "$found" ]; then
-        echo "FAIL: a Wayland session is installed on Debian: $found"; fail=1
-    else
-        echo "ok: no Wayland session installed with the X11 session"
-    fi
+    for p in $pkgs; do
+        if [ "$(dpkg-query -W -f='${db:Status-Status}' "$p" 2>/dev/null)" != installed ]; then
+            echo "FAIL: $p is built here but not installed in the testbed"; fail=1
+            continue
+        fi
+        if dpkg-query -L "$p" | grep -q '^/usr/share/wayland-sessions'; then
+            echo "FAIL: $p installs a Wayland session on Debian"; fail=1
+        else
+            echo "ok: $p installs no Wayland session"
+        fi
+        rels=$(dpkg-query -W -f='${Pre-Depends}, ${Depends}, ${Recommends}' "$p" | tr '|' ',')
+        if echo ", $rels," | grep -qE '[ ,]regolith-session-sway[ ,(]'; then
+            echo "FAIL: $p depends on or recommends regolith-session-sway"; fail=1
+        fi
+    done
 fi
 exit $fail

@@ -15,6 +15,7 @@ Restrictions: allow-stderr, skip-not-installable
 
 Tests: sessions-per-vendor
 Depends: regolith-session-flashback,
+         regolith-session-flashback-ext,
          debhelper,
          dpkg-dev,
          make
