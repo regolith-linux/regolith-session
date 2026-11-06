@@ -239,3 +239,63 @@ load_regolith_trawlres() {
         trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$USER_XRESOURCE_OVERRIDE_FILE"
     fi
 }
+
+# Merge the system resources, as the display manager's Xsession does
+# source ~ https://git.launchpad.net/ubuntu/+source/gdm3/tree/debian/patches/ubuntu/xresources_is_a_dir.patch?h=applied/ubuntu/noble
+load_system_xres() {
+    local sysresources=/etc/X11/Xresources i
+    for i in `ls "$sysresources" 2>/dev/null` ; do
+        if [ -r "$sysresources/$i"  -a -f "$sysresources/$i" ] && expr "$i" : '^[[:alnum:]_-]\+$' > /dev/null; then
+            xrdb -nocpp -merge "$sysresources/$i"
+        fi
+    done
+}
+
+# Load the X resources as the login does: ~/.Xresources first, then the
+# Regolith Xresources and the look, which win over it
+load_i3_resources() {
+    load_standard_xres # ~/.Xresources
+    load_regolith_xres # ~/.config/regolith3/Xresources and the look
+    xres_i3_cleanup    # Single-quote workspace names for i3
+    apply_user_xft_dpi # Xft.dpi from the files above, through gsd-xsettings
+}
+
+# Load the trawl resources as the login does
+load_sway_resources() {
+    load_standard_trawlres
+    load_regolith_trawlres
+    # workaround to prevent always loading the default look
+    load_regolith_trawlres
+    trawl_sway_cleanup
+}
+
+# Start the X resource database again from what it holds before the login
+# loads the files: clear it and merge the system resources as the display
+# manager does. Loading the files into it then rebuilds it as a login does;
+# merging into the old database instead would keep resources that the
+# previous look set and the new one doesn't, or that the user removed from
+# their files. Resources merged by hand or by programs, outside any file, go
+# too, except gsd-xsettings' Xft.* and Xcursor.*: it writes them only when its
+# settings change, and X programs (i3 too) take the DPI from Xft.dpi.
+clear_xres() {
+    local xsettings
+    xsettings=$(xrdb -query | grep -E '^(Xft|Xcursor)\.' || true)
+    xrdb -remove
+    load_system_xres
+    if [ -n "$xsettings" ]; then
+        printf '%s\n' "$xsettings" | xrdb -nocpp -merge
+    fi
+}
+
+# Rebuild the X resources from scratch, as the login builds them
+reload_i3_resources() {
+    clear_xres
+    load_i3_resources
+}
+
+# Rebuild trawl's resources from scratch. trawld runs as long as the user's
+# systemd instance, so it can also hold an earlier session's resources.
+reload_sway_resources() {
+    trawldb --remove
+    load_sway_resources
+}
