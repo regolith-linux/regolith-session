@@ -1,3 +1,13 @@
+regolith-session (1.2.5-1) noble; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * fix: end the Wayland session when sway exits, and apply the look once there (#99)
+  * fix: make regolith-diagnostic report sway in the Wayland session (#100)
+  * fix: keep xdg-terminal-exec from picking foot in the X11 session (#102)
+  * fix: rebuild the resources from scratch on regolith-look set and refresh (#98)
+
+ -- Ken Gilmer <kgilmer@gmail.com>  Sat, 07 Nov 2026 09:08:24 -0800
+
 regolith-session (1.2.4-1) noble; urgency=medium
 
   [ Carlos Fernandez Sanz ]
