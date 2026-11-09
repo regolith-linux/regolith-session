@@ -4,11 +4,17 @@
 # drop the block), and i3status-rs in Wayland, whose blocks are listed in
 # /etc/regolith/i3status-rust/config.toml. Check that both show the same
 # blocks by default, so a block added to or dropped from one bar is not
-# forgotten in the other.
+# forgotten in the other. The Wayland side is read from the config that the
+# installed i3status-rs package ships.
 set -eu
 
 config=/etc/regolith/i3status-rust/config.toml
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+
+# The first i3status-rs version whose config shows the same blocks as the
+# X11 bar. Older packages (0.32.1 and 0.22.x) lack some of them until
+# regolith-linux/i3status-rs_debian#17 (0.32.1) and #18 (0.22) are released.
+parity_version=0.40
 
 # i3xrocks blocklet package -> i3status-rs block
 block_for() {
@@ -16,6 +22,7 @@ block_for() {
         i3xrocks-battery) echo battery ;;
         i3xrocks-cpu-usage) echo cpu ;;
         i3xrocks-disk-capacity) echo disk_space ;;
+        i3xrocks-keyboard-layout) echo keyboard_layout ;;
         i3xrocks-memory) echo memory ;;
         i3xrocks-net-traffic) echo net ;;
         i3xrocks-rofication) echo rofication ;;
@@ -31,14 +38,56 @@ dpkg-query -W -f '${Recommends}\n' regolith-session-flashback \
 while read -r pkg; do block_for "$pkg"; done < "$tmp/x11-packages" \
     | sort -u > "$tmp/x11"
 
-sed -n 's/^[[:space:]]*block[[:space:]]*=[[:space:]]*"\([a-z_]*\)".*/\1/p' "$config" \
-    | sort -u > "$tmp/wayland"
+# One name per [[block]] table. A "custom" block is named after the command
+# it runs: regolith-bar-time is the date and time, like the X11 time blocklet.
+# Keys after a sub-table such as [[block.click]] belong to that sub-table.
+awk '
+    function value(line) {
+        sub(/^[^=]*=[[:space:]]*"/, "", line)
+        sub(/".*/, "", line)
+        return line
+    }
+    function flush() {
+        if (name == "custom") {
+            if (command ~ /(^|\/)regolith-bar-time([[:space:]]|$)/)
+                name = "time"
+            else
+                name = "custom:" command
+        }
+        if (name != "")
+            print name
+        name = ""
+        command = ""
+    }
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*\[\[block\]\][[:space:]]*$/ { flush(); keys = 1; next }
+    /^[[:space:]]*\[/ { keys = 0; next }
+    keys && /^[[:space:]]*block[[:space:]]*=/ { name = value($0) }
+    keys && /^[[:space:]]*command[[:space:]]*=/ { command = value($0) }
+    END { flush() }
+' "$config" | sort -u > "$tmp/wayland"
+
+version=$(dpkg-query -W -f '${Version}' i3status-rs)
 
 echo "X11 (regolith-session-flashback Recommends): $(tr '\n' ' ' < "$tmp/x11")"
-echo "Wayland ($config): $(tr '\n' ' ' < "$tmp/wayland")"
+echo "Wayland ($config, i3status-rs $version): $(tr '\n' ' ' < "$tmp/wayland")"
 
-if ! diff -u "$tmp/x11" "$tmp/wayland"; then
-    echo "FAIL: the X11 and Wayland bars show different blocks by default" >&2
-    exit 1
+if diff -u "$tmp/x11" "$tmp/wayland"; then
+    echo "PASS: both bars show the same blocks"
+    exit 0
 fi
-echo "PASS: both bars show the same blocks"
+
+# A block of the sway bar that the X11 bar lacks is fixed here, in the
+# Recommends of regolith-session-flashback, whatever the i3status-rs version.
+comm -13 "$tmp/x11" "$tmp/wayland" > "$tmp/x11-missing"
+comm -23 "$tmp/x11" "$tmp/wayland" > "$tmp/wayland-missing"
+if [ ! -s "$tmp/x11-missing" ] \
+    && dpkg --compare-versions "$version" lt "$parity_version"; then
+    echo "SKIP: i3status-rs $version predates the sway bar config with the" \
+        "same blocks as the X11 bar ($parity_version); its bar lacks:" \
+        "$(tr '\n' ' ' < "$tmp/wayland-missing")"
+    exit 77
+fi
+
+echo "FAIL: the X11 and Wayland bars show different blocks by default" >&2
+exit 1
