@@ -173,8 +173,9 @@ Tests: upgrade-relations
 Depends: regolith-session-common,
          regolith-session-flashback,
          regolith-session-sway,
+         apt,
          dpkg
-Restrictions: needs-root, allow-stderr
+Restrictions: allow-stderr
 
 Tests: xres-non-ascii
 Depends: regolith-session-common,

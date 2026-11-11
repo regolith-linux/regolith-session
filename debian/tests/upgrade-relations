@@ -7,18 +7,45 @@
 # session's login entry runs, and "Regolith / Wayland" vanished from the login
 # screen.
 #
-# Ask dpkg, with empty stand-in packages, which versions it accepts next to
-# the installed session packages (a refused package is left out; an accepted
-# stand-in that was not installed before is purged again):
+# Ask apt, with empty stand-in packages, which versions plain apt would put
+# next to the installed session packages. A version is accepted when apt
+# installs it without removing anything, and refused when apt can only install
+# it by removing the package that Breaks it, which "apt upgrade" never does:
 #  - the sway session refuses the old regolith-sway-audio-idle-inhibit (its
 #    sway partial started a second inhibitor) and accepts the empty
 #    transitional package that regolith-wm-config ships from 4.11.13 on;
 #  - regolith-session-common refuses session packages older than 1.2.0, whose
 #    login entries still run /usr/bin/regolith-session.
+#
+# Nothing is installed: apt only simulates, sees no archive (so it cannot
+# reach for other versions), and the test fails if the package states of the
+# testbed change. "dpkg --install" is no use here: it unpacks a package that
+# an installed package Breaks, and only refuses to configure it, which leaves
+# the stand-in unpacked in place of the real package.
 set -eu
 
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
 fail=0
+
+mkdir -p "$tmp/apt/lists/partial" "$tmp/apt/cache/archives/partial" \
+    "$tmp/apt/sources.list.d"
+
+# apt-get with no package sources: it knows the installed packages and the
+# .deb files on its command line, nothing else.
+apt_get() {
+    apt-get \
+        -o Dir::Etc::SourceList=/dev/null \
+        -o Dir::Etc::SourceParts="$tmp/apt/sources.list.d" \
+        -o Dir::State::Lists="$tmp/apt/lists" \
+        -o Dir::Cache="$tmp/apt/cache" \
+        -o Debug::NoLocking=true \
+        "$@"
+}
+
+states() {
+    dpkg-query -W -f '${binary:Package} ${Version} ${db:Status-Abbrev}\n' |
+        sort
+}
 
 # stand_in <name> <version>: build an empty package and print its path.
 stand_in() {
@@ -35,35 +62,75 @@ EOF
     echo "$tmp/$1_$2_all.deb"
 }
 
-# expect <accept|refuse> <name> <version> <reason>
+# expect accept <name> <version> <reason>
+# expect refuse <name> <version> <breaker> <reason>
 expect() {
-    deb=$(stand_in "$2" "$3")
-    before=$(dpkg-query -W -f '${db:Status-Abbrev}' "$2" 2>/dev/null || true)
-    if dpkg --install "$deb" > "$tmp/dpkg.out" 2>&1; then
+    want=$1 name=$2 version=$3
+    if [ "$want" = refuse ]; then
+        breaker=$4 reason=$5
+    else
+        breaker='' reason=$4
+    fi
+    deb=$(stand_in "$name" "$version")
+    if ! apt_get --simulate --no-install-recommends install "$deb" \
+            > "$tmp/apt.out" 2>&1; then
+        echo "FAIL: apt could not plan the install of $name $version ($reason)"
+        sed 's/^/    /' "$tmp/apt.out"
+        fail=1
+        return
+    fi
+    removed=$(sed -n 's/^Remv \([^ ]*\) .*/\1/p' "$tmp/apt.out" |
+        sed 's/:[^:]*$//' | tr '\n' ' ')
+    removed=${removed% }
+    if ! awk -v n="$name" -v v="($version " '
+            $1 == "Inst" && ($2 == n || index($2, n ":") == 1) &&
+            index($0, v) { found = 1 }
+            END { exit !found }' "$tmp/apt.out"; then
+        got="does not install it"
+    elif [ -z "$removed" ]; then
         got=accept
-        case "$before" in
-            ii*) ;;
-            *) dpkg --purge "$2" > /dev/null ;;
-        esac
     else
         got=refuse
     fi
-    if [ "$got" = "$1" ]; then
-        echo "ok: dpkg ${got}s $2 $3 ($4)"
-    else
-        echo "FAIL: dpkg ${got}s $2 $3, expected it to $1 ($4)"
-        sed 's/^/    /' "$tmp/dpkg.out"
-        fail=1
-    fi
+    case "$want:$got" in
+        accept:accept)
+            echo "ok: apt accepts $name $version ($reason)"
+            return
+            ;;
+        refuse:refuse)
+            case " $removed " in
+                *" $breaker "*)
+                    echo "ok: apt refuses $name $version: only by removing" \
+                        "$removed ($reason)"
+                    return
+                    ;;
+            esac
+            got="removes $removed but not $breaker"
+            ;;
+        *:accept) got="accepts it without removing anything" ;;
+        *:refuse) got="only installs it by removing $removed" ;;
+    esac
+    echo "FAIL: apt $got, expected it to $want $name $version ($reason)"
+    grep -E '^(Inst|Remv|Conf) ' "$tmp/apt.out" | sed 's/^/    /'
+    fail=1
 }
 
+states > "$tmp/states.before"
+
 expect refuse regolith-sway-audio-idle-inhibit 4.11.10-1regolith-noble \
-    "the last version with the sway partial"
+    regolith-session-sway "the last version with the sway partial"
 expect accept regolith-sway-audio-idle-inhibit 4.11.13-1regolith-noble \
     "the empty transitional package"
 expect refuse regolith-session-sway 1.1.13-1-1regolith-noble \
-    "its login entry runs /usr/bin/regolith-session"
+    regolith-session-common "its login entry runs /usr/bin/regolith-session"
 expect refuse regolith-session-flashback 1.1.13-1-1regolith-noble \
-    "its login entry runs /usr/bin/regolith-session"
+    regolith-session-common "its login entry runs /usr/bin/regolith-session"
+
+states > "$tmp/states.after"
+if ! diff -u "$tmp/states.before" "$tmp/states.after" > "$tmp/states.diff"; then
+    echo "FAIL: the installed packages changed during the test"
+    sed 's/^/    /' "$tmp/states.diff"
+    fail=1
+fi
 
 exit $fail
