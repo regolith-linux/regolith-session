@@ -10,12 +10,18 @@
 # Ask apt, with empty stand-in packages, which versions plain apt would put
 # next to the installed session packages. A version is accepted when apt
 # installs it without removing anything, and refused when apt can only install
-# it by removing the package that Breaks it, which "apt upgrade" never does:
+# it by removing the installed packages that hold it back, which
+# "apt upgrade" never does:
 #  - the sway session refuses the old regolith-sway-audio-idle-inhibit (its
 #    sway partial started a second inhibitor) and accepts the empty
 #    transitional package that regolith-wm-config ships from 4.11.13 on;
 #  - regolith-session-common refuses session packages older than 1.2.0, whose
-#    login entries still run /usr/bin/regolith-session.
+#    login entries still run /usr/bin/regolith-session;
+#  - the session packages refuse any other regolith-session-common: their
+#    session scripts call functions from its regolith-session-common.sh. When
+#    one session package was held back, apt kept the old common package with
+#    it but still upgraded the other session, whose script then stopped at
+#    the first missing function.
 #
 # Nothing is installed: apt only simulates, sees no archive (so it cannot
 # reach for other versions), and the test fails if the package states of the
@@ -63,13 +69,13 @@ EOF
 }
 
 # expect accept <name> <version> <reason>
-# expect refuse <name> <version> <breaker> <reason>
+# expect refuse <name> <version> <packages that hold it back> <reason>
 expect() {
     want=$1 name=$2 version=$3
     if [ "$want" = refuse ]; then
-        breaker=$4 reason=$5
+        holders=$4 reason=$5
     else
-        breaker='' reason=$4
+        holders='' reason=$4
     fi
     deb=$(stand_in "$name" "$version")
     if ! apt_get --simulate --no-install-recommends install "$deb" \
@@ -98,14 +104,19 @@ expect() {
             return
             ;;
         refuse:refuse)
-            case " $removed " in
-                *" $breaker "*)
-                    echo "ok: apt refuses $name $version: only by removing" \
-                        "$removed ($reason)"
-                    return
-                    ;;
-            esac
-            got="removes $removed but not $breaker"
+            kept=''
+            for holder in $holders; do
+                case " $removed " in
+                    *" $holder "*) ;;
+                    *) kept="$kept $holder" ;;
+                esac
+            done
+            if [ -z "$kept" ]; then
+                echo "ok: apt refuses $name $version: only by removing" \
+                    "$removed ($reason)"
+                return
+            fi
+            got="removes $removed but keeps$kept"
             ;;
         *:accept) got="accepts it without removing anything" ;;
         *:refuse) got="only installs it by removing $removed" ;;
@@ -125,6 +136,9 @@ expect refuse regolith-session-sway 1.1.13-1-1regolith-noble \
     regolith-session-common "its login entry runs /usr/bin/regolith-session"
 expect refuse regolith-session-flashback 1.1.13-1-1regolith-noble \
     regolith-session-common "its login entry runs /usr/bin/regolith-session"
+expect refuse regolith-session-common 1.1.13-1-1regolith-noble \
+    "regolith-session-flashback regolith-session-sway" \
+    "the session scripts call functions it does not have"
 
 states > "$tmp/states.after"
 if ! diff -u "$tmp/states.before" "$tmp/states.after" > "$tmp/states.diff"; then
