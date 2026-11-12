@@ -192,3 +192,12 @@ Tests: bar-blocks
 Depends: regolith-session-flashback,
          i3status-rs
 Restrictions: allow-stderr, skippable, skip-not-installable
+
+Tests: night-light
+Depends: regolith-session-sway,
+         gnome-settings-daemon,
+         sway-regolith | sway,
+         dbus,
+         libglib2.0-bin,
+         systemd
+Restrictions: allow-stderr
