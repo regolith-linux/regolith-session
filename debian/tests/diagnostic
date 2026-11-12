@@ -2,8 +2,11 @@
 # regolith-diagnostic must describe the session it runs in and get to the
 # end, the settings that bug reports ask for, also from a shell without
 # DESKTOP_SESSION (a text console or ssh). In the Wayland session it reports
-# sway, not i3, and works on an install without i3. i3, i3xrocks' tools and
-# the resource tools are stubbed out; the stub i3 records that it ran.
+# sway, not i3, and works on an install without i3. From a console (no
+# session type, no display) it reports each installed Regolith session: sway,
+# since this test depends on regolith-session-sway, and i3 only when the X11
+# session is installed too. i3, i3xrocks' tools and the resource tools are
+# stubbed out; the stub i3 records that it ran.
 set -eu
 
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
@@ -20,7 +23,9 @@ chmod +x "$tmp/bin/i3" "$tmp/bin/xrdb" "$tmp/bin/trawldb"
 run() { # run <session>: regolith-diagnostic without DESKTOP_SESSION
     rm -f "$tmp/i3.log"
     rc=0
-    env -u DESKTOP_SESSION XDG_SESSION_TYPE=$1 PATH="$tmp/bin:$PATH" \
+    if [ "$1" = unset ]; then type="-u XDG_SESSION_TYPE"; else type="XDG_SESSION_TYPE=$1"; fi
+    # shellcheck disable=SC2086
+    env -u DESKTOP_SESSION -u DISPLAY -u WAYLAND_DISPLAY $type PATH="$tmp/bin:$PATH" \
         dbus-run-session -- regolith-diagnostic >"$tmp/out-$1" 2>"$tmp/err-$1" || rc=$?
     if [ "$rc" -ne 0 ]; then
         cat "$tmp/err-$1"
@@ -61,5 +66,30 @@ run x11
 has x11 "--- i3"
 has x11 "Binary i3 version:  autopkgtest"
 lacks x11 "--- sway"
+
+# A text console (logind's "tty") and ssh (often no session type at all)
+for console in tty unset; do
+    run $console
+    has $console "Installed sessions:"
+    has $console "regolith-wayland"
+    if grep -qx -- "--- sway" "$tmp/out-$console"; then
+        echo "ok: $console: reports the installed sway session"
+    else
+        echo "FAIL: $console: no sway section for the installed sway session"; fail=1
+    fi
+    has $console "sway version"
+    if [ -f /usr/share/xsessions/regolith-x11.desktop ]; then
+        has $console "--- i3"
+        has $console "Binary i3 version:  autopkgtest"
+    else
+        lacks $console "--- i3"
+        lacks $console "org.gnome.gnome-flashback"
+        if [ -e "$tmp/i3.log" ]; then
+            echo "FAIL: $console: ran $(cat "$tmp/i3.log") without the X11 session"; fail=1
+        else
+            echo "ok: $console: does not run i3 without the X11 session"
+        fi
+    fi
+done
 
 exit $fail

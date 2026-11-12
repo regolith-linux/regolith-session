@@ -16,10 +16,32 @@ print_settings() {
   gsettings list-recursively "$1" 2>/dev/null || echo "--- [schema $1 is not installed]"
 }
 
+# Which window manager to describe: the one of the session this runs in. From
+# a text console or ssh there is none, so describe each installed Regolith
+# session, and i3 (as before) when neither session file is found.
+X11_SESSION=/usr/share/xsessions/regolith-x11.desktop
+WAYLAND_SESSION=/usr/share/wayland-sessions/regolith-wayland.desktop
+report_i3=false
+report_sway=false
+case "${XDG_SESSION_TYPE-}" in
+  wayland) report_sway=true ;;
+  x11) report_i3=true ;;
+  *)
+    if [ -f "$X11_SESSION" ]; then report_i3=true; fi
+    if [ -f "$WAYLAND_SESSION" ]; then report_sway=true; fi
+    if ! $report_i3 && ! $report_sway; then report_i3=true; fi
+    ;;
+esac
+
 echo "--- Regolith Diagnostic - $(date)"
 print_file /etc/regolith/version
 echo "XDG_SESSION_TYPE=${XDG_SESSION_TYPE-}"
 echo "DESKTOP_SESSION=${DESKTOP_SESSION-}"
+installed=""
+for session in "$X11_SESSION" "$WAYLAND_SESSION"; do
+  if [ -f "$session" ]; then installed="$installed $(basename "$session" .desktop)"; fi
+done
+echo "Installed sessions:${installed:- none}"
 
 echo "--- System Info "
 uname -a
@@ -31,18 +53,22 @@ print_file "$HOME/.Xresources"
 print_file "$HOME/.config/regolith3/Xresources"
 print_file "$HOME/.cache/regolith3/Xresources-generated"
 
-if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
+if $report_sway; then
   trawldb -q || true
   echo # trawldb does not end its output with a newline
+fi
+if $report_i3; then
+  xrdb -query || true
+fi
 
+if $report_sway; then
   echo "--- sway"
   sway --version || true
   print_file "/etc/regolith/sway/config"
   print_file "$HOME/.config/regolith3/sway/config"
   ls -l /usr/share/regolith/sway/config.d/ || true
-else
-  xrdb -query || true
-
+fi
+if $report_i3; then
   echo "--- i3"
   i3 --moreversion || true
   print_file "/etc/regolith/i3/config"
@@ -60,7 +86,7 @@ fi
 echo "--- dconf"
 print_settings org.gnome.desktop.interface
 print_settings org.gnome.desktop.background
-if [ "${XDG_SESSION_TYPE-}" != "wayland" ]; then
+if $report_i3; then
   print_settings org.gnome.gnome-flashback
 fi
 print_settings org.regolith-linux.ilia
