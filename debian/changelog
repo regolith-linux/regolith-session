@@ -1,3 +1,12 @@
+regolith-session (1.3.0-1) noble; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * feat(debian): show the same bar blocks in the X11 session as in sway (#87)
+  * fix(tests): check upgrade relations without changing the installed packages (#105)
+  * fix: make regolith-diagnostic report the installed sessions from a console (#106)
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 14 Nov 2026 09:54:55 -0800
+
 regolith-session (1.2.5-1) noble; urgency=medium
 
   [ Carlos Fernandez Sanz ]
