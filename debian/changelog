@@ -1,3 +1,20 @@
+regolith-session (1.1.15-1-debian-bookworm) jammy; urgency=medium
+
+  [ Carlos Fernandez Sanz ]
+  * fix: keep i3 restartable when the session runs gnome-session --builtin (#65)
+  * fix: recommend regolith-default-settings from the sway session (#74)
+  * fix: keep the PATH from ~/.profile when gnome-session runs the session itself (#81)
+  * fix: keep an earlier session's SWAYSOCK and I3SOCK out of the next one (#92)
+  * fix: make regolith-look refresh merge the X resources in the login order (#94)
+  * fix: stop building the sway session for Debian 12 (#86)
+  * fix(tests): check this source's packages, not the testbed, in sessions-per-vendor (#103)
+  * fix: rebuild the X resources from scratch on regolith-look set and refresh (#101)
+
+  [ rego-port-bot ]
+  * fix(debian): depend on gnome-session-common, which ships the session targets
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Sat, 14 Nov 2026 09:51:01 -0800
+
 regolith-session (1.1.14-3-debian-bookworm) jammy; urgency=medium
 
   [ Khosrow Moossavi ]
