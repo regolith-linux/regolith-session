@@ -70,6 +70,168 @@ clear_wm_sockets() {
     systemctl --user unset-environment I3SOCK SWAYSOCK 2>/dev/null || :
 }
 
+# The desktop settings of the Regolith sessions
+#
+# The user's other desktops (plain GNOME, for one) read the same dconf
+# databases as the Regolith sessions, so the look's settings and every change
+# made in a Regolith session would reach them. The Regolith sessions use a
+# dconf profile of their own instead: Regolith's own user database, which
+# takes every write made in them, above the databases that the user's sessions
+# read without Regolith, in their order. Keys Regolith never wrote show the
+# values of those databases, and administrator defaults and locks apply as
+# they do there. The profile is written when it is needed, as the databases
+# below Regolith's depend on the login environment and the system.
+# dconf takes letters, digits and underscores in database names
+REGOLITH_DCONF_DB="regolith_session"
+REGOLITH_DCONF_PROFILE_HEADER="# Desktop settings of the Regolith sessions, written by regolith-session"
+REGOLITH_DCONF_PLAIN_PREFIX="# DCONF_PROFILE without Regolith: "
+
+# The profile lives in dconf's runtime directory, next to dconf's own runtime
+# profile, where sandboxes given dconf access (Flatpak's xdg-run/dconf) find
+# it too. No database can have its name: dconf doesn't take hyphens there.
+regolith_dconf_profile_file() {
+    echo "${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}}/dconf/regolith-session-profile"
+}
+
+# is_regolith_dconf_profile <DCONF_PROFILE>: whether it names Regolith's profile
+is_regolith_dconf_profile() {
+    [[ ${1-} == /* ]] && [ -f "$1" ] \
+        && [ "$(head -n 1 "$1" 2>/dev/null)" == "$REGOLITH_DCONF_PROFILE_HEADER" ]
+}
+
+# regolith_dconf_plain_profile <file>: print the DCONF_PROFILE that Regolith's
+# profile <file> was written for, empty for none
+regolith_dconf_plain_profile() {
+    local line
+    while IFS= read -r line; do
+        if [[ $line == "$REGOLITH_DCONF_PLAIN_PREFIX"* ]]; then
+            line=${line#"$REGOLITH_DCONF_PLAIN_PREFIX"}
+            is_regolith_dconf_profile "$line" || echo "$line"
+            return 0
+        fi
+    done < "$1"
+}
+
+# find_dconf_profile <name>: print the file of the dconf profile <name> as dconf
+# finds it: a path as it is, a name in /etc/dconf/profile and then in the
+# dconf/profile directories of the data directories
+find_dconf_profile() {
+    local name=$1 dir dirs
+    if [[ $name == /* ]]; then
+        [ -e "$name" ] || return 1
+        echo "$name"
+        return 0
+    fi
+    IFS=: read -r -a dirs <<< "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    for dir in /etc "${dirs[@]}"; do
+        if [ -n "$dir" ] && [ -e "$dir/dconf/profile/$name" ]; then
+            echo "$dir/dconf/profile/$name"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# plain_dconf_sources <DCONF_PROFILE>: print the databases (the user-db: and
+# system-db: lines) of the profile that dconf picks for the user's sessions
+# without Regolith: the profile named by DCONF_PROFILE if it is not empty, else
+# the runtime profile, a "user" profile, or the built-in default. Fails where
+# Regolith's database can't go above them: for a missing named profile, which
+# gives no databases at all, for a profile that does not start with a user
+# database, and with a mandatory profile, which dconf uses whatever
+# DCONF_PROFILE says.
+plain_dconf_sources() {
+    local profile=$1 file sources
+    local runtime_profile="${XDG_RUNTIME_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}}/dconf/profile"
+    [ ! -e "/run/dconf/user/$(id -u)" ] || return 1
+    if [ -n "$profile" ]; then
+        file=$(find_dconf_profile "$profile") || return 1
+    elif [ -e "$runtime_profile" ]; then
+        file=$runtime_profile
+    elif ! file=$(find_dconf_profile user); then
+        echo "user-db:user"
+        return 0
+    fi
+    # The sources only, as dconf reads them: no comments, blanks, or lines
+    # dconf ignores
+    sources=$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+                  -e '/^\(user\|system\|service\|file\)-db:/!d' "$file") \
+        || return 1
+    [[ $sources == user-db:* ]] || return 1
+    echo "$sources"
+}
+
+# Use the desktop settings of the Regolith sessions: write Regolith's dconf
+# profile and export DCONF_PROFILE naming it, for this script and everything
+# it starts. The launchers and the session scripts pass it on to the whole
+# session. A DCONF_PROFILE that an earlier Regolith session left behind is
+# replaced by the profile written for the DCONF_PROFILE that session had.
+# --outside-session: for the tools that may run without the session's
+# environment. With no DCONF_PROFILE set, they use the databases that the last
+# Regolith session of the user used.
+# Sets REGOLITH_SETTINGS_DB and PLAIN_SETTINGS_DB, the user databases that the
+# Regolith sessions and the other sessions write. They are empty, and
+# DCONF_PROFILE is left as it was, where Regolith's database can't be put
+# above the user's databases.
+use_regolith_settings() {
+    local file plain=${DCONF_PROFILE-} sources db n=1 profile tmp
+    REGOLITH_SETTINGS_DB="" PLAIN_SETTINGS_DB=""
+    file=$(regolith_dconf_profile_file)
+    if is_regolith_dconf_profile "$plain"; then
+        plain=$(regolith_dconf_plain_profile "$plain")
+    elif [ -z "$plain" ] && [ "${1-}" == "--outside-session" ] \
+         && is_regolith_dconf_profile "$file"; then
+        plain=$(regolith_dconf_plain_profile "$file")
+    fi
+    if ! sources=$(plain_dconf_sources "$plain"); then
+        echo "Regolith's desktop settings can't be kept apart with the dconf profile ${plain:-user}" >&2
+        if [ -n "$plain" ]; then
+            export DCONF_PROFILE="$plain"
+        else
+            unset DCONF_PROFILE
+        fi
+        return 0
+    fi
+    # A name none of the user's own databases has
+    db=$REGOLITH_DCONF_DB
+    while grep -qxF "user-db:$db" <<< "$sources"; do
+        n=$((n + 1))
+        db="${REGOLITH_DCONF_DB}_$n"
+    done
+    profile=$(printf '%s\n' "$REGOLITH_DCONF_PROFILE_HEADER" \
+                  "$REGOLITH_DCONF_PLAIN_PREFIX$plain" "user-db:$db" "$sources")
+    # Clients read the profile when they start: replace it in one step
+    if [ "$(cat "$file" 2>/dev/null)" != "$profile" ]; then
+        # Private, as dconf makes it
+        (umask 077 && mkdir -p "${file%/*}")
+        tmp=$(mktemp "$file.XXXXXX")
+        echo "$profile" > "$tmp"
+        mv -f "$tmp" "$file"
+    fi
+    export DCONF_PROFILE="$file"
+    REGOLITH_SETTINGS_DB=$db
+    PLAIN_SETTINGS_DB=${sources%%$'\n'*}
+    PLAIN_SETTINGS_DB=${PLAIN_SETTINGS_DB#user-db:}
+}
+
+# skip_locked_settings <command...>: run a look's load_look with gsettings
+# leaving out the keys that an administrator locked. They keep the
+# administrator's value, and the loader would stop at the first key it can't
+# write, without applying the rest of the look.
+skip_locked_settings() {
+    # shellcheck disable=SC2329 # the look's loader calls it
+    gsettings() {
+        if [ "${1-}" == "set" ] && [ "$#" -eq 4 ] \
+           && [ "$(command gsettings writable "$2" "$3" 2>/dev/null)" == "false" ]; then
+            echo "Not setting $2 $3: the administrator locked it" >&2
+            return 0
+        fi
+        command gsettings "$@"
+    }
+    "$@"
+    unset -f gsettings
+}
+
 # Determine where the default i3 and sway config files are
 # Sets I3_CONFIG_FILE and SWAY_CONFIG_FILE
 resolve_default_config_file() {

@@ -3,6 +3,8 @@
 
 set -Eeu -o pipefail
 
+source /usr/lib/regolith/regolith-session-common.sh
+
 print_file() {
   if [ -f "$1" ]; then
     echo "--- $1:"
@@ -84,6 +86,13 @@ else
 fi
 
 echo "--- dconf"
+# The settings of the Regolith sessions, which differ from those of the user's
+# other desktops, also from outside a session
+use_regolith_settings --outside-session || true
+echo "DCONF_PROFILE=${DCONF_PROFILE-}"
+if is_regolith_dconf_profile "${DCONF_PROFILE-}"; then
+  print_file "$DCONF_PROFILE"
+fi
 print_settings org.gnome.desktop.interface
 print_settings org.gnome.desktop.background
 if $report_i3; then

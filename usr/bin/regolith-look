@@ -12,6 +12,8 @@ if [ "$#" -lt 1 ]; then
     echo "    refresh - Update the current session look based on Xresources values"
     echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
+    echo "    separate-gnome [--dry-run] - Move the look's settings that earlier Regolith sessions left in"
+    echo "        the settings GNOME and other desktops share into Regolith's own settings"
     exit 1
 fi
 
@@ -39,6 +41,9 @@ sway_restyle_existing() {
 }
 
 refresh() {
+    # The look's settings go to the Regolith sessions only, also from outside one
+    use_regolith_settings --outside-session
+
     if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         WM_RELOAD="swaymsg reload"
         reload_sway_resources
@@ -53,7 +58,7 @@ refresh() {
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
         # Call look function to update UI
-        load_look
+        skip_locked_settings load_look
 
         # restart window manager after merging Xresources
         $WM_RELOAD
@@ -62,6 +67,148 @@ refresh() {
         fi
     else
         echo "No look loader script specified, no UI changes"
+    fi
+}
+
+# The resources a login loads, for the look's loader. Where none are loaded,
+# as from another desktop or once a Wayland session has ended, load them from
+# the files as a login does. An X server of another desktop gets its own
+# resources back afterwards, from <saved>: see restore_x_resources.
+# ensure_look_resources <saved>
+ensure_look_resources() {
+    if [ -n "$($RESOURCE_GETTER regolith.look.loader 2>/dev/null || :)" ]; then
+        return 0
+    fi
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
+        reload_sway_resources
+    else
+        xrdb -query > "$1"
+        clear_xres
+        load_standard_xres
+        load_regolith_xres
+        xres_i3_cleanup
+    fi
+}
+
+# restore_x_resources <saved>: put back the X resources ensure_look_resources
+# replaced, if it did
+restore_x_resources() {
+    [ -f "$1" ] || return 0
+    if [ -s "$1" ]; then
+        xrdb -nocpp -load "$1"
+    else
+        xrdb -remove
+    fi
+}
+
+# Print "<schema> <key> <value>" for each setting the look's loader writes
+# given the resources, the value as gsettings prints it. The loader runs with
+# its settings going to a scratch key file instead of dconf, and the programs
+# it runs find a dconf command that changes nothing (the default loader's
+# gnome-terminal profile is written with dconf).
+look_settings() {
+    local loader
+    loader="$($RESOURCE_GETTER regolith.look.loader 2>/dev/null || :)"
+    [ -n "$loader" ] || return 0
+    (
+        scratch=$(mktemp -d)
+        # What the loader prints is shown only if it fails
+        # shellcheck disable=SC2329 # the trap runs it
+        end_look_settings() {
+            local status=$?
+            [ "$status" -eq 0 ] || cat "$scratch/loader.log" >&2
+            rm -rf "$scratch"
+        }
+        trap end_look_settings EXIT
+        export GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$scratch"
+        mkdir "$scratch/bin"
+        printf '#!/bin/sh\nexit 0\n' > "$scratch/bin/dconf"
+        chmod +x "$scratch/bin/dconf"
+        export PATH="$scratch/bin:$PATH"
+        gsettings() {
+            if [ "${1-}" == "set" ]; then
+                printf '%s %s\n' "$2" "$3" >> "$scratch/written"
+            fi
+            command gsettings "$@"
+        }
+        source "$loader"
+        load_look > "$scratch/loader.log" 2>&1
+        if [ -f "$scratch/written" ]; then
+            awk '!seen[$0]++' "$scratch/written" | while read -r schema key; do
+                echo "$schema $key $(command gsettings get "$schema" "$key")"
+            done
+        fi
+    )
+}
+
+# Sessions before Regolith had settings of its own wrote the look's settings
+# into the user's own settings, which the user's other desktops read too. Move
+# those still holding what Regolith writes into Regolith's settings: each key
+# the look's loader writes, given the resources, and the text scaling factor
+# set from the user's Xft.dpi. Keys holding anything else stay as they are.
+separate_gnome() {
+    local dry_run=false arg schema key value path raw paths settings moved=""
+    for arg in "$@"; do
+        case $arg in
+            --dry-run) dry_run=true ;;
+            *)
+                echo "Unrecognized option: $arg" >&2
+                echo "Usage: regolith-look separate-gnome [--dry-run]" >&2
+                exit 2 ;;
+        esac
+    done
+
+    use_regolith_settings --outside-session
+    if [ -z "$REGOLITH_SETTINGS_DB" ]; then
+        echo "Aborting, the Regolith sessions have no settings of their own with this dconf profile" >&2
+        exit 1
+    fi
+
+    scratch=$(mktemp -d)
+    trap 'restore_x_resources "$scratch/xresources" || :; rm -rf "$scratch"' EXIT
+    ensure_look_resources "$scratch/xresources" >&2
+    settings=$(look_settings)
+    restore_x_resources "$scratch/xresources"
+    rm -f "$scratch/xresources"
+
+    # The user's own database, and Regolith's, without the databases below
+    # them: the values they hold, regardless of administrator defaults and locks
+    echo "user-db:$PLAIN_SETTINGS_DB" > "$scratch/plain"
+    echo "user-db:$REGOLITH_SETTINGS_DB" > "$scratch/regolith"
+    paths=$(gsettings list-schemas --print-paths)
+
+    # A value the user already set in a Regolith session stays: the key only
+    # leaves the user's own settings
+    move_setting() { # move_setting <schema> <key> <path> <value>
+        moved+="$1 $2"$'\n'
+        echo "$1 $2"
+        if ! $dry_run; then
+            if [ -z "$(DCONF_PROFILE="$scratch/regolith" dconf read "$3")" ]; then
+                DCONF_PROFILE="$scratch/regolith" dconf write "$3" "$4"
+            fi
+            DCONF_PROFILE="$scratch/plain" dconf reset "$3"
+        fi
+    }
+
+    while read -r schema key value; do
+        [ -n "$schema" ] || continue
+        path=$(awk -v schema="$schema" '$1 == schema { print $2; exit }' <<< "$paths")
+        [ -n "$path" ] || continue
+        raw=$(DCONF_PROFILE="$scratch/plain" dconf read "$path$key")
+        if [ -n "$raw" ] \
+           && [ "$(DCONF_PROFILE="$scratch/plain" gsettings get "$schema" "$key")" == "$value" ]; then
+            move_setting "$schema" "$key" "$path$key" "$raw"
+        fi
+    done <<< "$settings"
+
+    # The factor apply_user_xft_dpi set last
+    schema=org.gnome.desktop.interface key=text-scaling-factor
+    path=/org/gnome/desktop/interface/$key
+    if [ -f "$XFT_DPI_STATE_FILE" ] && ! grep -qxF "$schema $key" <<< "$moved"; then
+        raw=$(DCONF_PROFILE="$scratch/plain" dconf read "$path")
+        if [ -n "$raw" ] && same_number "$raw" "$(cat "$XFT_DPI_STATE_FILE")"; then
+            move_setting "$schema" "$key" "$path" "$raw"
+        fi
     fi
 }
 
@@ -111,6 +258,8 @@ elif [ "$COMMAND" == "set" ]; then
             fi
         fi
     fi
+elif [ "$COMMAND" == "separate-gnome" ]; then
+    separate_gnome "${@:2}"
 elif [ "$COMMAND" == "list" ]; then
     if [ -d "$USER_LOOK_ROOT" ]; then
         find {"$DEFAULT_LOOK_ROOT","$USER_LOOK_ROOT"} -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
