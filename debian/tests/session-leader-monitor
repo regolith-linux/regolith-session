@@ -1,0 +1,152 @@
+#!/bin/sh
+# gnome-session, run by the display manager as "gnome-session
+# --session=<session>", leaves a leader process behind that starts a session
+# target and then opens $XDG_RUNTIME_DIR/gnome-session-leader-fifo. The open
+# blocks until gnome-session-monitor.service ("gnome-session-ctl --monitor")
+# opens the other end; the leader exits, ending the login, only once the
+# monitor closes it. If the target the leader starts does not pull in the
+# monitor, the leader never gets past the open: the session's services all
+# stop at logout, but the display manager keeps waiting on the wallpaper with
+# a busy cursor.
+#
+# Which target the leader starts depends on the gnome-session release:
+# gnome-session-<type>@<session>.target (gnome-session 48 and 49; 49 ships no
+# gnome-session-x11@.target template, so the X11 one is Regolith's own unit)
+# or gnome-session@<session>.target (gnome-session 50). Read it from the
+# leader binary, then check that the monitor is in the set of units that
+# starting that target starts: Requires=, Wants= and BindsTo=, plus .wants/
+# and .requires/ directories, followed transitively. Requisite= does not start
+# anything, so it is not followed.
+set -eu
+
+unit_dirs="/etc/systemd/user /usr/local/lib/systemd/user /usr/lib/systemd/user"
+fail=0
+
+# unit_cat prints a user unit the way systemd assembles it: the unit file (or
+# its template), then the drop-ins of the template and of the instance,
+# ordered by file name, an earlier directory masking a later one.
+unit_cat() { # unit_cat <unit>
+    name=$1
+    template=
+    case $name in
+        *@?*.*) template="${name%%@*}@.${name##*.}" ;;
+    esac
+    main=
+    for n in "$name" $template; do
+        for d in $unit_dirs; do
+            if [ -f "$d/$n" ]; then
+                main="$d/$n"
+                break 2
+            fi
+        done
+    done
+    [ -n "$main" ] || return 1
+    cat "$main"
+    prio=0
+    for d in $unit_dirs; do
+        prio=$((prio + 1))
+        for n in $template "$name"; do
+            for f in "$d/$n.d"/*.conf; do
+                [ -f "$f" ] && printf '%s %s %s\n' "${f##*/}" "$prio" "$f"
+            done
+        done
+    done | sort -k1,1 -k2,2n | awk '$1 != last { print $3; last = $1 }' \
+         | while read -r f; do cat "$f"; echo; done
+}
+
+# started_by prints the units that starting <unit> also starts directly, with
+# %i and an empty instance ("foo@.service") filled in from <unit>'s instance,
+# as systemd does.
+started_by() { # started_by <unit>
+    name=$1
+    instance=
+    case $name in
+        *@?*.*) instance=${name#*@}; instance=${instance%.*} ;;
+    esac
+    unit_cat "$name" | awk '
+        /^\[/ { section = $0; next }
+        section != "[Unit]" { next }
+        /^(Requires|Wants|BindsTo)=/ {
+            key = substr($0, 1, index($0, "=") - 1)
+            value = substr($0, index($0, "=") + 1)
+            if (value == "") list[key] = ""
+            else list[key] = list[key] " " value
+        }
+        END { for (k in list) print list[k] }' \
+        | tr ' ' '\n' | grep . \
+        | sed -e "s/%i/$instance/g" ${instance:+-e "s/@\./@$instance./"} || true
+    template=
+    case $name in
+        *@?*.*) template="${name%%@*}@.${name##*.}" ;;
+    esac
+    for d in $unit_dirs; do
+        for n in $template "$name"; do
+            for sub in wants requires; do
+                for f in "$d/$n.$sub"/*; do
+                    [ -e "$f" ] || [ -L "$f" ] && echo "${f##*/}"
+                done
+            done
+        done
+    done
+}
+
+# closure prints every unit that starting <unit> starts, transitively.
+closure() { # closure <unit>
+    seen=" "
+    todo=$1
+    while [ -n "$todo" ]; do
+        next=
+        for u in $todo; do
+            case $seen in *" $u "*) continue ;; esac
+            seen="$seen$u "
+            echo "$u"
+            next="$next $(started_by "$u" | tr '\n' ' ')"
+        done
+        todo=$next
+    done
+}
+
+leader=
+for b in /usr/libexec/gnome-session-init-worker /usr/libexec/gnome-session-binary; do
+    if [ -f "$b" ] && grep -aq 'gnome-session-leader-fifo' "$b"; then
+        leader=$b
+        break
+    fi
+done
+if [ -z "$leader" ]; then
+    echo "FAIL: no gnome-session leader binary found"
+    exit 1
+fi
+if grep -aq 'gnome-session-%s@%s\.target' "$leader"; then
+    typed=yes
+else
+    typed=no
+fi
+echo "leader: $leader (starts gnome-session-<type>@<session>.target: $typed)"
+
+check() { # check <session> <type>
+    if [ $typed = yes ]; then
+        target="gnome-session-$2@$1.target"
+    else
+        target="gnome-session@$1.target"
+    fi
+    if ! unit_cat "$target" >/dev/null 2>&1; then
+        echo "FAIL: $1: the leader starts $target, which is not installed"
+        fail=1
+        return
+    fi
+    if closure "$target" | grep -qx gnome-session-monitor.service; then
+        echo "ok: $1: $target starts gnome-session-monitor.service"
+    else
+        echo "FAIL: $1: $target does not start gnome-session-monitor.service;" \
+             "the session leader will hang at logout"
+        echo "units it starts:"
+        closure "$target" | sed 's/^/    /'
+        fail=1
+    fi
+}
+
+check regolith-x11 x11
+check regolith-wayland wayland
+
+exit $fail
