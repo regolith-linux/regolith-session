@@ -13,6 +13,13 @@ Depends: regolith-session-flashback,
          regolith-session-sway
 Restrictions: allow-stderr
 
+Tests: session-leader-monitor
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         gnome-session-bin,
+         gnome-session-common
+Restrictions: allow-stderr
+
 Tests: session-environment
 Depends: regolith-session-flashback,
          regolith-session-sway,
