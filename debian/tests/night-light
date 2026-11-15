@@ -1,0 +1,95 @@
+#!/bin/sh
+# Night Light in the Wayland session: the session starts gnome-settings-daemon's
+# color plugin, which runs the Night Light schedule and publishes the colour
+# temperature that regolith-displayd applies to the outputs (Mutter does that
+# in GNOME). Check that the session pulls the plugin in, and that the plugin
+# works under sway, where there is no Mutter.
+#
+# Up to GNOME 48 the plugin is a GTK program and exits with "Cannot open
+# display" without a compositor; in the session it gets WAYLAND_DISPLAY from
+# sway (config.d/10_dbus-activation). Give it sway's display here as well.
+set -eu
+
+fail=0
+target=gnome-session@regolith-wayland.target
+color=org.gnome.SettingsDaemon.Color
+
+# 1. The session wants the plugin (target drop-in and gnome-session file).
+if cat /usr/lib/systemd/user/"$target".d/*.conf /etc/systemd/user/"$target".d/*.conf \
+        2>/dev/null | grep -qx "Wants=$color.target"; then
+    echo "ok: $target wants $color.target"
+else
+    echo "FAIL: $target does not want $color.target"
+    fail=1
+fi
+if [ ! -f "/usr/lib/systemd/user/$color.target" ]; then
+    echo "FAIL: $color.target is not installed"
+    fail=1
+fi
+if grep -q "^RequiredComponents=.*$color;" \
+        /usr/share/gnome-session/sessions/regolith-wayland.session; then
+    echo "ok: regolith-wayland.session requires $color"
+else
+    echo "FAIL: regolith-wayland.session does not require $color"
+    fail=1
+fi
+
+# 2. Under a headless sway, the plugin computes the Night Light temperature
+#    from the settings the Settings app writes.
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export XDG_RUNTIME_DIR="$tmp/run" XDG_CONFIG_HOME="$tmp/config" HOME="$tmp"
+export GSETTINGS_BACKEND=keyfile WLR_BACKENDS=headless WLR_RENDERER=pixman
+export WLR_LIBINPUT_NO_DEVICES=1
+unset DISPLAY WAYLAND_DISPLAY
+mkdir -p "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+cat > "$tmp/run.sh" <<'SCRIPT'
+#!/bin/sh
+set -u
+printf 'output * bg #000000 solid_color\n' > "$HOME/sway.cfg"
+sway -c "$HOME/sway.cfg" > "$HOME/sway.log" 2>&1 &
+sway=$!
+display=
+for i in $(seq 1 100); do
+    display=$(cd "$XDG_RUNTIME_DIR" && ls -d wayland-* 2>/dev/null | grep -v '\.lock$' | head -n1)
+    [ -n "$display" ] && break
+    sleep 0.1
+done
+if [ -z "$display" ]; then
+    echo "sway did not start:"
+    cat "$HOME/sway.log"
+    kill $sway 2>/dev/null
+    exit 1
+fi
+export WAYLAND_DISPLAY="$display"
+schema=org.gnome.settings-daemon.plugins.color
+gsettings set $schema night-light-schedule-automatic false
+gsettings set $schema night-light-schedule-from 0.0
+gsettings set $schema night-light-schedule-to 23.99
+gsettings set $schema night-light-temperature 3000
+gsettings set $schema night-light-enabled true
+/usr/libexec/gsd-color > "$HOME/gsd-color.log" 2>&1 &
+gsd=$!
+temperature=
+for i in $(seq 1 100); do
+    temperature=$(gdbus call --session -d org.gnome.SettingsDaemon.Color \
+        -o /org/gnome/SettingsDaemon/Color \
+        -m org.freedesktop.DBus.Properties.Get \
+        org.gnome.SettingsDaemon.Color Temperature 2>/dev/null \
+        | sed -n 's/.*uint32 \([0-9]*\).*/\1/p')
+    [ "$temperature" = 3000 ] && break
+    sleep 0.1
+done
+kill $gsd $sway 2>/dev/null
+echo "gsd-color Temperature: ${temperature:-none}"
+[ "$temperature" = 3000 ] || { cat "$HOME/gsd-color.log"; exit 1; }
+SCRIPT
+chmod +x "$tmp/run.sh"
+if dbus-run-session -- "$tmp/run.sh"; then
+    echo "ok: gsd-color publishes the Night Light temperature under sway"
+else
+    echo "FAIL: gsd-color did not publish the Night Light temperature"
+    fail=1
+fi
+
+exit $fail
