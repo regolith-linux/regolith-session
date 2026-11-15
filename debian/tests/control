@@ -83,6 +83,8 @@ Restrictions: allow-stderr
 
 Tests: look-switch-stale
 Depends: regolith-session-common,
+         regolith-session-flashback,
+         regolith-session-sway,
          x11-xserver-utils,
          xvfb,
          dbus,
