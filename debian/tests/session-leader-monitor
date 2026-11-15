@@ -10,8 +10,8 @@
 # a busy cursor.
 #
 # Which target the leader starts depends on the gnome-session release:
-# gnome-session-<type>@<session>.target (gnome-session 48 and older, which
-# ship gnome-session-x11@.target and gnome-session-wayland@.target templates)
+# gnome-session-<type>@<session>.target (gnome-session 48 and 49; 49 ships no
+# gnome-session-x11@.target template, so the X11 one is Regolith's own unit)
 # or gnome-session@<session>.target (gnome-session 50). Read it from the
 # leader binary, then check that the monitor is in the set of units that
 # starting that target starts: Requires=, Wants= and BindsTo=, plus .wants/

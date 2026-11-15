@@ -115,22 +115,13 @@ expect gnome-session@regolith-x11.target Requires gnome-session-x11-services-rea
 expect gnome-session@regolith-x11.target Wants gnome-flashback-polkit.service
 expect gnome-session@regolith-x11.target Wants gnome-flashback-idle-monitor.service
 
-# In gnome-session 48 and older, the leader that
-# "gnome-session --session=regolith-x11" leaves behind starts
-# gnome-session-x11@regolith-x11.target and then blocks opening
-# gnome-session-leader-fifo until gnome-session-monitor.service opens the
-# other end. Only gnome-session.target pulls in the monitor, and there
-# gnome-session@.target merely has Requisite= on it, so the X11 template's
-# BindsTo= is what starts it. If this target loses the template's
-# dependencies (for example to a concrete unit of the same name), the leader
-# never exits and logout hangs on the wallpaper with a busy cursor.
-# Newer releases (gnome-session 50 in Ubuntu 26.04) start
-# gnome-session@regolith-x11.target directly and ship no
-# gnome-session-x11@.target, so there is nothing to check there.
-if unit_cat gnome-session-x11@.target >/dev/null 2>&1; then
-    expect gnome-session-x11@regolith-x11.target BindsTo gnome-session.target
-    expect gnome-session-x11@regolith-x11.target BindsTo gnome-session-x11.target
-fi
+# gnome-session 48 and 49 start gnome-session-x11@regolith-x11.target and
+# then block opening gnome-session-leader-fifo until
+# gnome-session-monitor.service opens the other end. Only gnome-session.target
+# pulls in the monitor, and there gnome-session@.target merely has Requisite=
+# on it, so this target has to start it, or logout hangs on the wallpaper with
+# a busy cursor. The session-leader-monitor test checks the whole chain.
+expect gnome-session-x11@regolith-x11.target BindsTo gnome-session.target
 
 # The Wayland session can't go on without sway, however sway exits.
 expect regolith-wayland.service OnFailure gnome-session-shutdown.target

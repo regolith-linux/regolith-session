@@ -1,0 +1,28 @@
+# gnome-session 48 and 49 run the X11 session by starting
+# gnome-session-x11@<session>.target. gnome-session 49 ships no
+# gnome-session-x11@.target template, so this unit has to exist; on 48 it
+# replaces the template. gnome-session 50 starts gnome-session@<session>.target
+# directly and does not use it.
+#
+# After starting this target, the session leader blocks opening
+# gnome-session-leader-fifo until gnome-session-monitor.service opens the
+# other end. Only gnome-session.target pulls in the monitor, and
+# gnome-session@.target merely has Requisite= on it there, so this target has
+# to start it; without that the leader never exits and logout hangs.
+# gnome-session-x11.target and gnome-session-failed.target are not in
+# gnome-session 49, hence Wants= on the former and no OnFailure=.
+[Unit]
+Description=Regolith GNOME Session (X11)
+DefaultDependencies=no
+RefuseManualStart=no
+RefuseManualStop=yes
+Conflicts=shutdown.target gnome-session-shutdown.target
+PartOf=graphical-session.target
+Requires=gnome-session@regolith-x11.target
+BindsTo=gnome-session@regolith-x11.target
+After=gnome-session@regolith-x11.target
+PartOf=gnome-session@regolith-x11.target
+Wants=gnome-session-x11.target
+After=gnome-session-x11.target
+BindsTo=gnome-session.target
+After=gnome-session.target
