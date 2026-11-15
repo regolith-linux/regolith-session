@@ -12,6 +12,10 @@ if [ "$#" -lt 1 ]; then
     echo "    refresh - Update the current session look based on Xresources values"
     echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
+    echo "    font - Display the interface and monospace fonts of the current session"
+    echo "    font set interface|monospace <font> - Use a font, as a Pango font description such as 'Liberation Mono 11'"
+    echo "    font reset [interface|monospace] - Use the look's fonts again"
+    echo "    font list [monospace] - Display the installed font families, or the fixed-width ones"
     exit 1
 fi
 
@@ -88,6 +92,72 @@ set_look() {
     refresh
 }
 
+# Print the installed font families, sorted, once each: all of them, or the
+# fixed-width ones (fontconfig's mono and dual spacing)
+list_fonts() { # list_fonts [monospace]
+    local patterns=(:)
+    if [ "${1-}" == "monospace" ]; then
+        patterns=(:spacing=mono :spacing=dual)
+    fi
+    for pattern in "${patterns[@]}"; do
+        fc-list "$pattern" -f '%{family}\n'
+    done | tr ',' '\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+         | { grep -v '^$' || true; } | LC_ALL=C sort -u
+}
+
+is_font_kind() {
+    [ "${1-}" == "interface" ] || [ "${1-}" == "monospace" ]
+}
+
+# regolith-look font [set|reset|list]: the font settings live in the user's
+# Xresources as regolith.font.interface and regolith.font.monospace. set and
+# reset apply them as refresh does, so the session follows the file.
+font() {
+    local action=${1-}
+    case "$action" in
+        "")
+            echo "interface: $($RESOURCE_GETTER gtk.font_name "")"
+            echo "monospace: $($RESOURCE_GETTER gtk.monospace_font_name "")"
+            ;;
+        set)
+            local kind=${2-}
+            if ! is_font_kind "$kind"; then
+                echo "Usage: regolith-look font set interface|monospace <font>" >&2
+                exit 1
+            fi
+            shift 2
+            local description="$*"
+            "$FONT_HELPER" check "$description"
+            "$FONT_HELPER" edit "$USER_XRESOURCE_OVERRIDE_FILE" "$kind" --value "$description"
+            refresh
+            ;;
+        reset)
+            local kinds=(interface monospace)
+            if [ "$#" -gt 1 ]; then
+                if [ "$#" -gt 2 ] || ! is_font_kind "$2"; then
+                    echo "Usage: regolith-look font reset [interface|monospace]" >&2
+                    exit 1
+                fi
+                kinds=("$2")
+            fi
+            "$FONT_HELPER" edit "$USER_XRESOURCE_OVERRIDE_FILE" "${kinds[@]}"
+            refresh
+            ;;
+        list)
+            if [ "$#" -gt 2 ] || { [ "$#" -eq 2 ] && [ "$2" != "monospace" ]; }; then
+                echo "Usage: regolith-look font list [monospace]" >&2
+                exit 1
+            fi
+            list_fonts "${2-}"
+            ;;
+        *)
+            echo "Unrecognized font command: $action" >&2
+            echo "Run 'regolith-look' to see the font commands." >&2
+            exit 1
+            ;;
+    esac
+}
+
 if [ "$COMMAND" == "refresh" ]; then
     refresh
 elif [ "$COMMAND" == "set" ]; then
@@ -117,6 +187,9 @@ elif [ "$COMMAND" == "list" ]; then
     else
         find "$DEFAULT_LOOK_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
     fi
+elif [ "$COMMAND" == "font" ]; then
+    shift
+    font "$@"
 else
     echo "Unrecognized command: $COMMAND"
     exit 1

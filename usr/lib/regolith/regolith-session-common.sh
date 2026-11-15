@@ -32,6 +32,11 @@ DEFAULT_SESSION_TYPE="i3"
 # Preprocessor for Xresources files; keeps non-ASCII values as they are
 XRES_CPP="/usr/lib/regolith/regolith-xres-cpp"
 
+# Font settings (regolith-look font): the helper that derives the look's font
+# resources from them, and the launcher stylesheet it derives from the look's
+FONT_HELPER="/usr/lib/regolith/regolith-look-font"
+FONT_STYLESHEET_FILE="$HOME/.config/regolith3/generated/ilia.css"
+
 # Set the default resource getter
 RESOURCE_GETTER="xrescat"
 if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
@@ -251,11 +256,54 @@ load_system_xres() {
     done
 }
 
+# The font settings, regolith.font.interface and regolith.font.monospace,
+# replace the families of the look's font resources they reach, and their
+# style and size where they give one. Resources the user's own files set are
+# kept. The launcher's stylesheet is derived from the look's while the
+# monospace setting is chosen.
+font_settings_chosen() { # font_settings_chosen <xrescat|trawlcat>
+    [ -n "$($1 regolith.font.interface "")$($1 regolith.font.monospace "")" ]
+}
+
+# Print the resources the font settings derive from the resource dump on stdin
+derive_font_resources() {
+    "$FONT_HELPER" derive "$USER_XRESOURCE_OVERRIDE_FILE" "$USER_XRESOURCE_SEARCH_PATH" \
+        "$FONT_STYLESHEET_FILE"
+}
+
+apply_xres_font_settings() {
+    local derived
+    if ! font_settings_chosen xrescat; then
+        rm -f "$FONT_STYLESHEET_FILE"
+        return 0
+    fi
+    derived=$(xrdb -query | derive_font_resources) \
+        || echo "Could not apply the font settings" >&2
+    if [ -n "$derived" ]; then
+        printf '%s\n' "$derived" | xrdb -nocpp -merge
+    fi
+}
+
+apply_trawl_font_settings() {
+    local derived="$XDG_RUNTIME_DIR/trawl_font_settings.tmp"
+    if ! font_settings_chosen trawlcat; then
+        rm -f "$FONT_STYLESHEET_FILE"
+        return 0
+    fi
+    trawldb --query | derive_font_resources > "$derived" \
+        || echo "Could not apply the font settings" >&2
+    if [ -s "$derived" ]; then
+        trawldb --nocpp --merge "$derived"
+    fi
+    rm -f "$derived"
+}
+
 # Load the X resources as the login does: ~/.Xresources first, then the
 # Regolith Xresources and the look, which win over it
 load_i3_resources() {
     load_standard_xres # ~/.Xresources
     load_regolith_xres # ~/.config/regolith3/Xresources and the look
+    apply_xres_font_settings # The fonts chosen with 'regolith-look font'
     xres_i3_cleanup    # Single-quote workspace names for i3
     apply_user_xft_dpi # Xft.dpi from the files above, through gsd-xsettings
 }
@@ -266,7 +314,28 @@ load_sway_resources() {
     load_regolith_trawlres
     # workaround to prevent always loading the default look
     load_regolith_trawlres
+    apply_trawl_font_settings
     trawl_sway_cleanup
+}
+
+# Forward the chosen fonts to the desktop settings. The look's loader does
+# this whenever it runs; later logins, which don't run it, use this. A
+# failure must not stop the login.
+apply_font_desktop_settings() {
+    command -v gsettings >/dev/null 2>&1 || return 0
+    local kind key setting value
+    for kind in interface monospace; do
+        if [ "$kind" == interface ]; then
+            key=gtk.font_name setting=font-name
+        else
+            key=gtk.monospace_font_name setting=monospace-font-name
+        fi
+        [ -n "$($RESOURCE_GETTER "regolith.font.$kind" "")" ] || continue
+        value=$($RESOURCE_GETTER "$key" "")
+        [ -n "$value" ] || continue
+        gsettings set org.gnome.desktop.interface "$setting" "$value" \
+            || echo "Could not set the desktop's $setting to $value" >&2
+    done
 }
 
 # Start the X resource database again from what it holds before the login

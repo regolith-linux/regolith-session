@@ -199,3 +199,21 @@ Tests: bar-blocks
 Depends: regolith-session-flashback,
          i3status-rs
 Restrictions: allow-stderr, skippable, skip-not-installable
+
+Tests: look-font
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         xrescat,
+         x11-xserver-utils,
+         xvfb,
+         dbus,
+         trawld,
+         trawldb,
+         trawlcat,
+         fonts-dejavu-core,
+         fonts-liberation,
+         libglib2.0-bin,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         dconf-service
+Restrictions: allow-stderr
