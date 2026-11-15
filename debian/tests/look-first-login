@@ -4,7 +4,8 @@
 # what the user changed since, such as the wallpaper; 'regolith-look refresh'
 # still applies the look. Runs regolith-session-x11 under Xvfb with i3
 # stubbed out, and regolith-session-wayland with trawld and sway stubbed out,
-# three times each for three logins of one user.
+# three times each for three logins of one user. The desktop settings are those
+# of the Regolith sessions, which the user's other desktops don't see.
 set -eu
 
 tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
@@ -47,6 +48,13 @@ mkdir -p "$HOME/.config/regolith3"
 echo 'regolith.look.path: /usr/share/regolith-look/default' \
     > "$HOME/.config/regolith3/Xresources"
 custom="file://$HOME/custom.png"
+# The look's settings and the user's changes in the session are those of the
+# Regolith sessions, which the user's other desktops don't see: read and write
+# them, outside the session, as a Regolith session's clients do
+DCONF_PROFILE=$(bash -c '. /usr/lib/regolith/regolith-session-common.sh
+                         use_regolith_settings --outside-session
+                         echo "$DCONF_PROFILE"')
+export DCONF_PROFILE
 
 login() { # login <n>: a fresh resource database, then the login path
     if [ "$session" = x11 ]; then

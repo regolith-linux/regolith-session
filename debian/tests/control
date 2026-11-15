@@ -146,6 +146,27 @@ Depends: regolith-session-flashback,
          x11-xserver-utils
 Restrictions: allow-stderr
 
+Tests: plain-gnome-settings
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         regolith-look-default,
+         regolith-look-nord,
+         regolith-ftue,
+         gnome-terminal,
+         xrescat,
+         trawld,
+         trawldb,
+         trawlcat,
+         gsettings-desktop-schemas,
+         dconf-gsettings-backend,
+         dconf-cli,
+         dconf-service,
+         libglib2.0-bin,
+         dbus,
+         xvfb,
+         x11-xserver-utils
+Restrictions: allow-stderr
+
 Tests: java-wm-nonreparenting
 Depends: regolith-session-flashback,
          regolith-session-sway,

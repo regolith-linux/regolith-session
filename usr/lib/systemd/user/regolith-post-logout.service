@@ -14,6 +14,13 @@ Type=oneshot
 RemainAfterExit=yes
 Slice=session.slice
 ExecStart=/bin/true
+# The launchers give the session Regolith's dconf profile, and gnome-session
+# puts it into the user manager's environment. The user manager outlives a
+# logout while the user has another session (ssh, lingering, a quick new
+# login), and the next session's services would read and write Regolith's
+# desktop settings, whatever desktop it is: drop it at logout. This comes
+# first, as a failing post-logout script would skip the commands after it.
+ExecStop=-systemctl --user unset-environment DCONF_PROFILE
 ExecStop=/bin/sh -c 'f=%h/.config/regolith3/logout; [ -f "$$f" ] || exit 0; echo "Regolith is launching user post-logout file $$f"; timeout --verbose 5 bash "$$f"'
 # The script gets 5 seconds, as before
 TimeoutStopSec=10

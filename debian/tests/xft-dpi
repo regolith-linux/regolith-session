@@ -40,6 +40,8 @@ cat > "$tmp/run" <<'EOF'
 #!/bin/bash
 set -Eeu -o pipefail
 . /usr/lib/regolith/regolith-session-common.sh
+# The settings of the Regolith sessions, where the login path writes them
+use_regolith_settings
 fail=0
 pids=()
 trap 'kill "${pids[@]}" 2>/dev/null || true' EXIT

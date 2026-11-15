@@ -1,0 +1,305 @@
+#!/bin/sh
+# The Regolith sessions keep their desktop settings in a dconf database of
+# their own, laid over the user's settings, so the look and every change made
+# in a Regolith session stay out of the user's other desktops (plain GNOME).
+# For each session type, with i3/sway and gnome-session stubbed out:
+#  1. Logins, a setting the window manager's programs change, 'regolith-look
+#     refresh' and 'set' (run without the session's environment) change the
+#     Regolith view only: the user's own database keeps its bytes. Keys
+#     Regolith never wrote show the user's values, also ones changed later; a
+#     key reset in Regolith shows the user's value again.
+#  2. The launchers give gnome-session the Regolith view, also when they
+#     inherit the profile of an earlier Regolith session.
+#  3. regolith-diagnostic reports the Regolith view.
+#  4. An administrator's defaults show in both views and a locked key keeps
+#     the administrator's value: the look's other keys are still applied.
+#  5. 'regolith-look separate-gnome' moves the look's values that an earlier
+#     Regolith session left in the user's own settings, and nothing else.
+#  6. The session drops Regolith's profile from the user manager at logout,
+#     before the user's post-logout script, which may fail.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+mkdir -p "$tmp/bin"
+fail=0
+
+unit=/usr/lib/systemd/user/regolith-post-logout.service
+stops=$(sed -n 's/^ExecStop=//p' "$unit")
+case $(printf '%s\n' "$stops" | head -n 1) in
+    *"unset-environment DCONF_PROFILE"*)
+        echo "ok: $unit drops DCONF_PROFILE first when the session ends" ;;
+    *)
+        echo "FAIL: $unit does not drop DCONF_PROFILE first when the session ends"
+        fail=1 ;;
+esac
+
+Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+export DISPLAY=":$display"
+
+# The window managers record their environment and change a setting, as a
+# program they start would. gnome-session records what the launchers give it.
+for wm in i3 sway; do
+    cat > "$tmp/bin/$wm" <<EOF
+#!/bin/sh
+env > "\$HOME/$wm.env"
+gsettings set org.gnome.desktop.interface cursor-size 48
+EOF
+done
+cat > "$tmp/bin/gnome-session" <<'EOF'
+#!/bin/sh
+env > "$HOME/gnome-session.env"
+EOF
+for stub in i3-msg swaymsg; do printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/$stub"; done
+chmod +x "$tmp/bin/"*
+
+# An administrator's database, as a file-db in a profile the login inherits:
+# a default for clock-format and a locked gtk-theme
+mkdir -p "$tmp/admin.d/locks"
+cat > "$tmp/admin.d/00-admin" <<'EOF'
+[org/gnome/desktop/interface]
+gtk-theme='AdminTheme'
+clock-format='12h'
+EOF
+echo /org/gnome/desktop/interface/gtk-theme > "$tmp/admin.d/locks/00-admin"
+dconf compile "$tmp/admin.db" "$tmp/admin.d"
+printf 'user-db:user\nfile-db:%s\n' "$tmp/admin.db" > "$tmp/admin-profile"
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/sh
+# run <x11|wayland> <part>: one user's part of the test, on its own session
+# bus, since dconf-service writes into the home it started with
+set -eu
+session=$1 part=$2 fail=0
+tmp=$AUTOPKGTEST_TMP
+export XDG_SESSION_TYPE="$session" PATH="$tmp/bin:$PATH"
+unset DCONF_PROFILE
+if [ "$session" = x11 ]; then
+    export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
+else
+    export XDG_CURRENT_DESKTOP=Regolith-Wayland:GNOME:sway
+    trawld >/dev/null 2>&1 &
+    trawld=$!
+    trap 'kill "$trawld" 2>/dev/null || true' EXIT
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        trawldb -q >/dev/null 2>&1 && break; sleep 0.5
+    done
+fi
+iface=org.gnome.desktop.interface bg=org.gnome.desktop.background
+
+ok() { echo "ok: $session: $*"; }
+bad() { echo "FAIL: $session: $*"; fail=1; }
+check() { # check <what> <actual> <expected>
+    if [ "$2" = "$3" ]; then ok "$1: $2"; else bad "$1: $2, expected $3"; fi
+}
+resource() { # resource <name>: the resource as the look's loader reads it
+    if [ "$session" = x11 ]; then xrescat "$1"; else trawlcat "$1"; fi
+}
+fresh_resources() {
+    if [ "$session" = x11 ]; then xrdb -remove; else trawldb --remove; fi
+}
+login() { # login <n>: the systemd-managed login path, on fresh resources
+    fresh_resources
+    if ! NOTIFY_SOCKET="$tmp/notify" timeout 60 "regolith-session-$session" \
+         >"$HOME/login$1.log" 2>&1; then
+        cat "$HOME/login$1.log"
+        bad "login $1 did not complete"
+    fi
+}
+bare() { # bare <command...>: without the session's environment
+    env -i HOME="$HOME" DISPLAY="$DISPLAY" XDG_SESSION_TYPE="$session" \
+        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+        DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+        PATH="$tmp/bin:/usr/sbin:/usr/bin:/sbin:/bin" "$@"
+}
+db_sum() { # db_sum <name>: the bytes of the user's database <name>
+    sha256sum < "$HOME/.config/dconf/$1" 2>/dev/null | cut -d' ' -f1 || echo absent
+}
+wm_profile() { sed -n 's/^DCONF_PROFILE=//p' "$HOME/$1.env"; }
+plain() {
+    if [ -n "$plain_profile" ]; then DCONF_PROFILE=$plain_profile gsettings "$@"
+    else env -u DCONF_PROFILE gsettings "$@"; fi
+}
+rego() { DCONF_PROFILE=$regolith_profile gsettings "$@"; }
+if [ "$session" = x11 ]; then wm=i3; else wm=sway; fi
+mkdir -p "$HOME/.config/regolith3"
+echo 'regolith.look.path: /usr/share/regolith-look/default' \
+    > "$HOME/.config/regolith3/Xresources"
+plain_profile=""
+
+case $part in
+default)
+
+# 1. The default profile
+gsettings set $iface gtk-theme "'PlainTheme'"
+gsettings set $bg picture-uri "'file:///plain.png'"
+gsettings set org.gnome.desktop.input-sources xkb-options "['compose:ralt']"
+before=$(db_sum user)
+
+login 1
+regolith_profile=$(wm_profile $wm)
+if [ -n "$regolith_profile" ] && [ -f "$regolith_profile" ]; then
+    ok "the window manager runs with the dconf profile $regolith_profile"
+else
+    bad "the window manager runs without a dconf profile of its own"
+fi
+check "first login: the user's database" "$(db_sum user)" "$before"
+check "first login: plain gtk-theme" "$(plain get $iface gtk-theme)" "'PlainTheme'"
+check "first login: plain picture-uri" "$(plain get $bg picture-uri)" "'file:///plain.png'"
+check "first login: plain cursor-size" "$(plain get $iface cursor-size)" "24"
+look_theme="'$(resource gtk.theme_name)'"
+check "first login: Regolith gtk-theme" "$(rego get $iface gtk-theme)" "$look_theme"
+check "first login: Regolith picture-uri" "$(rego get $bg picture-uri)" "'none'"
+check "first login: Regolith cursor-size, set by the WM's program" \
+    "$(rego get $iface cursor-size)" "48"
+check "first login: Regolith xkb-options, the user's" \
+    "$(rego get org.gnome.desktop.input-sources xkb-options)" "['compose:ralt']"
+
+gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:nocaps']"
+check "Regolith xkb-options after the user changed it" \
+    "$(rego get org.gnome.desktop.input-sources xkb-options)" "['ctrl:nocaps']"
+before=$(db_sum user)
+rego set $bg picture-uri "'file:///regolith.png'"
+rego reset $iface gtk-theme
+check "Regolith gtk-theme after a reset in Regolith" "$(rego get $iface gtk-theme)" "'PlainTheme'"
+check "plain picture-uri after a change in Regolith" "$(plain get $bg picture-uri)" "'file:///plain.png'"
+
+login 2
+check "second login: the user's database" "$(db_sum user)" "$before"
+check "second login: Regolith keeps the reset gtk-theme" "$(rego get $iface gtk-theme)" "'PlainTheme'"
+check "second login: Regolith picture-uri" "$(rego get $bg picture-uri)" "'file:///regolith.png'"
+check "second login: same dconf profile" "$(wm_profile $wm)" "$regolith_profile"
+
+bare regolith-look refresh >"$HOME/refresh.log" 2>&1 || { cat "$HOME/refresh.log"; bad "refresh failed"; }
+check "refresh: the user's database" "$(db_sum user)" "$before"
+check "refresh: Regolith gtk-theme" "$(rego get $iface gtk-theme)" "$look_theme"
+check "refresh: plain gtk-theme" "$(plain get $iface gtk-theme)" "'PlainTheme'"
+bare regolith-look set nord >"$HOME/set.log" 2>&1 || { cat "$HOME/set.log"; bad "set failed"; }
+nord_theme="'$(resource gtk.theme_name)'"
+check "set nord: the user's database" "$(db_sum user)" "$before"
+check "set nord: Regolith gtk-theme" "$(rego get $iface gtk-theme)" "$nord_theme"
+
+# 2. The launchers, with an earlier Regolith session's profile and without
+for inherited in "" "$regolith_profile"; do
+    rm -f "$HOME/gnome-session.env"
+    if [ -n "$inherited" ]; then
+        DCONF_PROFILE=$inherited "regolith-session-$session-launch" || true
+    else
+        "regolith-session-$session-launch" || true
+    fi
+    check "launcher (DCONF_PROFILE=${inherited:-unset}): gnome-session's dconf profile" \
+        "$(wm_profile gnome-session)" "$regolith_profile"
+done
+check "launcher: Regolith's profile names its database and the user's" \
+    "$(grep -c '^user-db:' "$regolith_profile")" "2"
+check "launcher: the user's database" "$(db_sum user)" "$before"
+
+# 3. regolith-diagnostic
+bare regolith-diagnostic > "$HOME/diagnostic.log" 2>&1 || true
+if grep -qxF "DCONF_PROFILE=$regolith_profile" "$HOME/diagnostic.log" \
+   && grep -qxF "$iface gtk-theme $nord_theme" "$HOME/diagnostic.log"; then
+    ok "regolith-diagnostic reports the Regolith view"
+else
+    bad "regolith-diagnostic does not report the Regolith view"
+fi
+
+;;
+admin)
+# 4. An administrator's database: its defaults and locks
+plain_profile=$tmp/admin-profile
+export DCONF_PROFILE="$plain_profile"
+gsettings set $bg picture-uri "'file:///plain.png'"
+before=$(db_sum user)
+login 1
+unset DCONF_PROFILE
+regolith_profile=$(wm_profile $wm)
+check "admin: the user's database" "$(db_sum user)" "$before"
+check "admin: Regolith gtk-theme, locked" "$(rego get $iface gtk-theme)" "'AdminTheme'"
+check "admin: Regolith picture-uri, the look's" "$(rego get $bg picture-uri)" "'none'"
+check "admin: Regolith clock-format, the default" "$(rego get $iface clock-format)" "'12h'"
+check "admin: plain clock-format, the default" "$(plain get $iface clock-format)" "'12h'"
+check "admin: Regolith gtk-theme writable" "$(rego writable $iface gtk-theme)" "false"
+if rego set $iface gtk-theme "'Other'" 2>/dev/null; then
+    bad "admin: Regolith set the locked gtk-theme"
+else
+    ok "admin: setting the locked gtk-theme from Regolith is refused"
+fi
+bare regolith-look refresh >"$HOME/refresh.log" 2>&1 \
+    || { cat "$HOME/refresh.log"; bad "admin: refresh failed on the locked key"; }
+check "admin: Regolith gtk-theme after refresh, locked" "$(rego get $iface gtk-theme)" "'AdminTheme'"
+check "admin: the user's database after refresh" "$(db_sum user)" "$before"
+;;
+old)
+
+# 5. separate-gnome, for the look values an earlier session left in the
+#    user's own settings: the look applied the old way, then the user's own
+#    icon theme, and a font the user already picked in Regolith
+fresh_resources
+bash -c '
+    . /usr/lib/regolith/regolith-session-common.sh
+    if [ "$XDG_SESSION_TYPE" = x11 ]; then load_standard_xres; load_regolith_xres
+    else load_sway_resources; fi
+    loader=$(${RESOURCE_GETTER} regolith.look.loader)
+    . "$loader"
+    load_look' > "$HOME/old.log" 2>&1 || { cat "$HOME/old.log"; bad "applying the look the old way failed"; }
+look_theme="'$(resource gtk.theme_name)'"
+look_font="'$(resource gtk.font_name)'"
+gsettings set $iface icon-theme "'MyIcons'"
+regolith_profile=$(bash -c '. /usr/lib/regolith/regolith-session-common.sh
+                            use_regolith_settings --outside-session
+                            echo "$DCONF_PROFILE"')
+rego set $iface font-name "'Regolith Pick 10'"
+db=$(sed -n 's/^user-db://p' "$regolith_profile" | head -n 1)
+# No resources loaded: as from another desktop (X11), or after a session (sway)
+fresh_resources
+if [ "$session" = x11 ]; then echo 'autopkgtest.other: desktop' | xrdb -nocpp -merge; fi
+xres_before=$(xrdb -query 2>/dev/null || :)
+before=$(db_sum user) rbefore=$(db_sum "$db")
+
+rc=0; bare regolith-look separate-gnome --bogus >/dev/null 2>&1 || rc=$?
+check "separate-gnome --bogus: status" "$rc" "2"
+check "separate-gnome --bogus: the user's database" "$(db_sum user)" "$before"
+bare regolith-look separate-gnome --dry-run > "$HOME/dry-run.out" 2>"$HOME/dry-run.err" \
+    || { cat "$HOME/dry-run.err"; bad "separate-gnome --dry-run failed"; }
+check "--dry-run: the user's database" "$(db_sum user)" "$before"
+check "--dry-run: Regolith's database" "$(db_sum "$db")" "$rbefore"
+bare regolith-look separate-gnome > "$HOME/run.out" 2>"$HOME/run.err" \
+    || { cat "$HOME/run.err"; bad "separate-gnome failed"; }
+check "separate-gnome prints what --dry-run printed" "$(cat "$HOME/run.out")" "$(cat "$HOME/dry-run.out")"
+for key in "$iface gtk-theme" "$iface font-name" "$bg picture-uri"; do
+    if grep -qxF "$key" "$HOME/run.out"; then ok "separate-gnome moves $key"
+    else bad "separate-gnome does not report $key"; fi
+done
+if grep -qF icon-theme "$HOME/run.out"; then bad "separate-gnome moves the user's icon-theme"; fi
+check "separated: plain gtk-theme" "$(dconf read /org/gnome/desktop/interface/gtk-theme)" ""
+check "separated: plain picture-uri" "$(dconf read /org/gnome/desktop/background/picture-uri)" ""
+check "separated: plain icon-theme" "$(plain get $iface icon-theme)" "'MyIcons'"
+check "separated: Regolith gtk-theme" "$(rego get $iface gtk-theme)" "$look_theme"
+check "separated: Regolith picture-uri" "$(rego get $bg picture-uri)" "'none'"
+check "separated: Regolith keeps the font picked in Regolith" \
+    "$(rego get $iface font-name)" "'Regolith Pick 10'"
+check "separated: Regolith icon-theme, the user's" "$(rego get $iface icon-theme)" "'MyIcons'"
+[ "$look_font" != "'Regolith Pick 10'" ] || bad "the look's font is the test's"
+check "separate-gnome: the X resources" "$(xrdb -query 2>/dev/null || :)" "$xres_before"
+check "second separate-gnome moves nothing" "$(bare regolith-look separate-gnome 2>/dev/null)" ""
+;;
+esac
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+for session in x11 wayland; do
+    for part in default admin old; do
+        home="$tmp/home-$session-$part" runtime="$tmp/xdg-$session-$part"
+        mkdir -p "$home" "$runtime"
+        chmod 700 "$runtime"
+        AUTOPKGTEST_TMP="$tmp" HOME="$home" XDG_RUNTIME_DIR="$runtime" \
+            dbus-run-session -- "$tmp/run" $session $part || fail=1
+    done
+done
+exit $fail

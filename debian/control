@@ -91,6 +91,9 @@ Description: Regolith customized SwayWM session
 Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
+    dconf-cli,
+    dconf-gsettings-backend,
+    libglib2.0-bin,
     regolith-resource-loader
 Breaks: regolith-session (<= 1.1.2),
     regolith-session-flashback (<< 1.2.0~),

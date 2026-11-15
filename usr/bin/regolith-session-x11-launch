@@ -16,6 +16,13 @@ case ":${XDG_CONFIG_DIRS-}:" in
     *) export XDG_CONFIG_DIRS="/etc/xdg/xdg-$SESSION_TYPE:${XDG_CONFIG_DIRS:-/etc/xdg}" ;;
 esac
 
+# The session's desktop settings go into a dconf database of its own, laid
+# over the user's other settings, so they stay out of the user's other
+# desktops. gnome-session passes DCONF_PROFILE on to the user's service manager
+# and to D-Bus activation, and with them to everything the session starts.
+source /usr/lib/regolith/regolith-session-common.sh
+use_regolith_settings
+
 if [ -f /etc/os-release ]; then
     # shellcheck disable=SC1091
     source /etc/os-release
