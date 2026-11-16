@@ -10,12 +10,20 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: regolith-look <command>"
     echo "Actions: "
     echo "    refresh - Update the current session look based on Xresources values"
-    echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
+    echo "    list - Display the looks installed in /usr/share/regolith-look and in the looks directories of the administrators and the user"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
     exit 1
 fi
 
 COMMAND=$1
+
+# The looks directories, in the order 'set' looks a name up in: the user's,
+# the administrators', the most important first, then the shipped looks
+LOOK_ROOTS=("$USER_LOOK_ROOT")
+for dir in "${SYSTEM_CONFIG_DIRS[@]}"; do
+    LOOK_ROOTS+=("$dir/looks")
+done
+LOOK_ROOTS+=("$DEFAULT_LOOK_ROOT")
 
 WM_RELOAD="i3-msg -q restart"
 
@@ -48,17 +56,25 @@ refresh() {
     fi
 
     # Determine if Look loader script is available
-    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
-    if [ -n  "$LOADER_PATH" ]; then
+    # A look without a loader script (a user's own, for one) has no such
+    # resource: the empty default then leaves LOADER_PATH empty. A loader
+    # that is not a settings file is passed over too.
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader "")"
+    if is_settings_file "$LOADER_PATH"; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
         # Call look function to update UI
         load_look
 
-        # restart window manager after merging Xresources
-        $WM_RELOAD
-        if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
-            sway_restyle_existing
+        # restart window manager after merging Xresources, unless the
+        # configuration file it started with is gone
+        if wm_config_present; then
+            $WM_RELOAD
+            if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
+                sway_restyle_existing
+            fi
+        else
+            echo "The window manager's configuration file is gone, not reloading it until the next login" >&2
         fi
     else
         echo "No look loader script specified, no UI changes"
@@ -68,24 +84,44 @@ refresh() {
 # Upsert Xresource key regolith.look.path and refresh session
 set_look() {
     if [ ! -d "$LOOK_PATH" ]; then
-        echo "Aborting, invalid look directory: $LOOK_PATH"
+        echo "Aborting, invalid look directory: $LOOK_PATH" >&2
         exit 1
     fi
 
-    # Unset any existing values
-    if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
-	# remove existing declaration comments
-        sed -i '/^!regolith.look.path/d' "$USER_XRESOURCE_OVERRIDE_FILE"
+    mkdir -p "$USER_CONFIG_DIR"
 
-        # disable existing declaration
-        sed -i 's/^regolith.look.path/\!regolith.look.path/g' "$USER_XRESOURCE_OVERRIDE_FILE"
+    # Unset any existing values. The file may be a link to the user's own
+    # file: edit that file and keep the link.
+    if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
+        # remove existing declaration comments
+        sed -i --follow-symlinks '/^!regolith\.look\.path/d' "$USER_XRESOURCE_OVERRIDE_FILE"
+
+        # disable existing declarations
+        sed -i --follow-symlinks 's/^\([[:space:]]*regolith\.look\.path[[:space:]]*:\)/!\1/' "$USER_XRESOURCE_OVERRIDE_FILE"
+
+        # The new declaration goes on a line of its own
+        if [ -n "$(tail -c 1 "$USER_XRESOURCE_OVERRIDE_FILE")" ]; then
+            echo >> "$USER_XRESOURCE_OVERRIDE_FILE"
+        fi
     fi
 
     # add new declaration
-    echo "regolith.look.path: $LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
+    printf 'regolith.look.path: %s\n' "$LOOK_PATH" >> "$USER_XRESOURCE_OVERRIDE_FILE"
 
     # refresh rebuilds the resources from the files, so it reads the new look
     refresh
+}
+
+# Print the name of every look once, in byte order
+list_looks() {
+    local root dir
+    for root in "${LOOK_ROOTS[@]}"; do
+        for dir in "$root"/*/ "$root"/.[!.]*/ "$root"/..?*/; do
+            [ -d "$dir" ] || continue
+            dir=${dir%/}
+            printf '%s\n' "${dir##*/}"
+        done
+    done | LC_ALL=C sort -u
 }
 
 if [ "$COMMAND" == "refresh" ]; then
@@ -95,28 +131,32 @@ elif [ "$COMMAND" == "set" ]; then
     if [ -z "$LOOK_NAME" ]; then
         echo "Must specify a look to set." >&2
         exit 1
-    else
-        LOOK_PATH="$DEFAULT_LOOK_ROOT/$LOOK_NAME"
+    fi
+    case $LOOK_NAME in
+        */* | . | ..)
+            echo "Invalid look name: $LOOK_NAME" >&2
+            echo "Run 'regolith-look list' to see the installed looks." >&2
+            exit 1 ;;
+    esac
 
-        if [ -d "$LOOK_PATH" ]; then
+    # The first directory with that name, in the order of LOOK_ROOTS
+    for root in "${LOOK_ROOTS[@]}"; do
+        if [ -d "$root/$LOOK_NAME" ]; then
+            LOOK_PATH="$root/$LOOK_NAME"
             set_look
-        else
-            LOOK_PATH="$USER_LOOK_ROOT/$LOOK_NAME"
-            if [ -d "$LOOK_PATH" ]; then
-                set_look
-            else
-                echo "Unable to find look $LOOK_NAME in $DEFAULT_LOOK_ROOT or $USER_LOOK_ROOT" >&2
-                echo "Run 'regolith-look list' to see the installed looks." >&2
-                exit 1
-            fi
+            exit 0
         fi
-    fi
+    done
+
+    searched="$DEFAULT_LOOK_ROOT or $USER_LOOK_ROOT"
+    for dir in "${SYSTEM_CONFIG_DIRS[@]}"; do
+        searched+=" or $dir/looks"
+    done
+    echo "Unable to find look $LOOK_NAME in $searched" >&2
+    echo "Run 'regolith-look list' to see the installed looks." >&2
+    exit 1
 elif [ "$COMMAND" == "list" ]; then
-    if [ -d "$USER_LOOK_ROOT" ]; then
-        find {"$DEFAULT_LOOK_ROOT","$USER_LOOK_ROOT"} -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
-    else
-        find "$DEFAULT_LOOK_ROOT" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort
-    fi
+    list_looks
 else
     echo "Unrecognized command: $COMMAND"
     exit 1
