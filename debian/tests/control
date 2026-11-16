@@ -199,3 +199,16 @@ Tests: bar-blocks
 Depends: regolith-session-flashback,
          i3status-rs
 Restrictions: allow-stderr, skippable, skip-not-installable
+
+Tests: config-layers
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         dbus,
+         xvfb,
+         x11-xserver-utils,
+         xrescat,
+         trawld,
+         trawldb,
+         trawlcat,
+         libglib2.0-bin
+Restrictions: allow-stderr

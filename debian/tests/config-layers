@@ -1,0 +1,223 @@
+#!/bin/bash
+# The session reads its settings in layers: the administrators' directories
+# <dir>/regolith3 of XDG_CONFIG_DIRS (the first entry the most important),
+# then the user's $XDG_CONFIG_HOME/regolith3, which wins. Checks, in the X11
+# (xrdb) and the Wayland (trawl) session, with the window managers stubbed
+# out: the Xresources order and #include lookup, a layer that does not
+# preprocess, the look an administrator chooses and the one the user sets,
+# regolith-look list and set, the window manager configuration, the session
+# environment files, the first-login flag, regolith-diagnostic, and that
+# refresh doesn't reload a window manager whose configuration file is gone.
+# Every path holds a space.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+mkdir -p "$tmp/bin"
+
+# The window managers record how they were started and their environment;
+# i3-msg and swaymsg record the commands and report $tmp/loaded as the
+# configuration file the window manager loaded
+for wm in i3 sway; do
+    cat > "$tmp/bin/$wm" <<EOF
+#!/bin/sh
+printf '%s\n' "\$@" > "$tmp/$wm.args"
+env > "$tmp/$wm.env"
+EOF
+done
+for ipc in i3-msg swaymsg; do
+    cat > "$tmp/bin/$ipc" <<EOF
+#!/bin/sh
+echo "\$*" >> "$tmp/ipc.log"
+case "\$*" in
+    *get_version*) printf '{"loaded_config_file_name": "%s"}\n' "\$(cat "$tmp/loaded")" ;;
+esac
+EOF
+done
+chmod +x "$tmp/bin/"*
+
+Xvfb -displayfd 3 -screen 0 640x480x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+DISPLAY=":$(cat "$tmp/display")"
+export DISPLAY
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/bash
+# run <x11|wayland>
+set -eu
+session=$1 fail=0
+t=$AUTOPKGTEST_TMP
+if [ "$session" = x11 ]; then wm=i3 other=sway; else wm=sway other=i3; fi
+
+export HOME="$t/home $session"
+export XDG_CONFIG_HOME="$t/config home $session"
+admin1="$t/admin one $session" admin2="$t/admin two $session"
+# A relative and a repeated entry are skipped
+export XDG_CONFIG_DIRS="$admin1/:relative/dir::$admin2:$admin1"
+user="$XDG_CONFIG_HOME/regolith3" a1="$admin1/regolith3" a2="$admin2/regolith3"
+export XDG_SESSION_TYPE=$session XDG_RUNTIME_DIR="$t/xdg-$session"
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+rm -f "$t/ipc.log" "$t/loader.count"
+
+mkdir -p "$HOME/.config/regolith3" "$user/Xresources.d" "$user/looks/both" "$user/$wm" \
+    "$a1/Xresources.d" "$a1/$wm" "$a1/$other" "$a2/Xresources.d" "$a2/looks/admin look" \
+    "$a2/looks/both" "$a2/$wm"
+printf 'load_look() { echo loaded >> "%s"; }\n' "$t/loader.count" > "$t/loader.sh"
+printf 't.order: home\nt.home: home\n' > "$HOME/.Xresources"
+# The pre-XDG location is not read when XDG_CONFIG_HOME is set
+printf 't.legacy: legacy\n' > "$HOME/.config/regolith3/Xresources"
+printf 'regolith.look.loader: %s\nt.order: look\nt.look: admin look\nXft.dpi: 96\n' \
+    "$t/loader.sh" > "$a2/looks/admin look/root"
+printf 't.look: admin both\n' > "$a2/looks/both/root"
+printf 't.look: user both\n' > "$user/looks/both/root"
+printf 't.order: admin2\nt.admin2: admin2\n#include <only-admin2>\nregolith.look.path: %s\n' \
+    "$a2/looks/admin look" > "$a2/Xresources"
+printf 't.only.admin2: admin2.d\n' > "$a2/Xresources.d/only-admin2"
+printf 't.order: admin1\nt.admin1: admin1\n#include <shared>\nXft.dpi: 144\n' > "$a1/Xresources"
+printf 't.shared: admin1.d\n' > "$a1/Xresources.d/shared"
+printf 't.shared: user.d\n' > "$user/Xresources.d/shared"
+printf 't.order: user\n' > "$user/Xresources.real"
+ln -s Xresources.real "$user/Xresources"
+printf '# %s config of admin two\n' "$wm" > "$a2/$wm/config"
+printf '# %s config of admin one\n' "$wm" > "$a1/$wm/config"
+printf 'T_ENV=admin2\nT_ADMIN2=yes\n' > "$a2/$wm/env"
+printf 'T_ENV=admin1\n# T_COMMENT=yes\nexport T_EXPORT=yes\nT_QUOTED="a b"\nT_EQ=a=b\nUID=0\n' > "$a1/$wm/env"
+printf 'T_OTHER=yes\n' > "$a1/$other/env"
+printf 'T_ENV=user' > "$user/$wm/env" # no newline at the end
+
+if [ "$session" = x11 ]; then
+    fresh() { xrdb -remove; }
+    get() { xrdb -query | sed -n "s/^$1:[[:space:]]*//p"; }
+    has() { xrdb -query | grep -q "^$1:"; }
+    login=regolith-session-x11
+else
+    trawld >/dev/null 2>&1 &
+    trap "kill $! 2>/dev/null || true" EXIT
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        trawldb -q >/dev/null 2>&1 && break; sleep 0.5
+    done
+    fresh() { trawldb --remove; }
+    get() { trawldb -q | sed -n "s/^$1[[:space:]]*:[[:space:]]*//p"; }
+    has() { trawldb -q | grep -q "^$1[[:space:]]*:"; }
+    login=regolith-session-wayland
+fi
+login() { # the login path, with the window manager stubbed out
+    fresh
+    NOTIFY_SOCKET="$t/notify" PATH="$t/bin:$PATH" \
+        $login >"$t/login.log" 2>&1 \
+        || { cat "$t/login.log"; echo "FAIL: $session: $login failed"; fail=1; }
+}
+look() { PATH="$t/bin:$PATH" regolith-look "$@" >"$t/look.log" 2>&1 \
+             || { cat "$t/look.log"; echo "FAIL: $session: regolith-look $* failed"; fail=1; }; }
+check() { # check <description> <command...>
+    local what=$1; shift
+    if "$@"; then echo "ok: $session: $what"; else echo "FAIL: $session: $what"; fail=1; fi
+}
+is() { # is <step> <name> <value>
+    if [ "$(get "$2")" = "$3" ]; then echo "ok: $session: $1: $2 is '$3'"
+    else echo "FAIL: $session: $1: $2 is '$(get "$2")', expected '$3'"; fail=1; fi
+}
+gone() { # gone <step> <name>
+    if has "$2"; then echo "FAIL: $session: $1: $2 is set to '$(get "$2")'"; fail=1
+    else echo "ok: $session: $1: $2 is not set"; fi
+}
+env_is() { # env_is <name> <value>: in the window manager's environment
+    if grep -qxF "$1=$2" "$t/$wm.env"; then echo "ok: $session: $wm gets $1=$2"
+    else echo "FAIL: $session: $wm lacks $1=$2: $(grep "^$1=" "$t/$wm.env" || echo unset)"; fail=1; fi
+}
+env_unset() {
+    if grep -q "^$1=" "$t/$wm.env"; then echo "FAIL: $session: $wm gets $(grep "^$1=" "$t/$wm.env")"; fail=1
+    else echo "ok: $session: $wm does not get $1"; fi
+}
+
+cp "$a1/Xresources" "$t/admin1.before"
+cp "$a2/Xresources" "$t/admin2.before"
+
+login
+is "login" t.order user
+is "login" t.home home
+is "login" t.admin1 admin1
+is "login" t.admin2 admin2
+is "login: <shared> from the user's Xresources.d first" t.shared user.d
+is "login: <only-admin2> from an administrator's Xresources.d" t.only.admin2 admin2.d
+is "login: the look an administrator chose" t.look "admin look"
+gone "login" t.legacy
+if [ "$session" = x11 ]; then
+    is "login: an administrator's Xft.dpi over the look's" Xft.dpi 144
+fi
+check "$wm starts with the most important administrator's config" \
+    grep -qxF "$a1/$wm/config" "$t/$wm.args"
+env_is T_ENV user
+env_is T_ADMIN2 yes
+env_is T_QUOTED "a b"
+env_is T_EQ a=b
+env_unset T_COMMENT
+env_unset T_EXPORT
+env_unset T_OTHER
+check "the look loader ran once" test "$(cat "$t/loader.count" 2>/dev/null)" = loaded
+check "the first-login flag is in XDG_CONFIG_HOME" test -d "$user/flags"
+check "no first-login flag in ~/.config" test ! -e "$HOME/.config/regolith3/flags"
+
+PATH="$t/bin:$PATH" regolith-look list > "$t/list"
+check "list prints every look once" \
+    test "$(grep -cx both "$t/list")-$(grep -cx 'admin look' "$t/list")" = 1-1
+
+look set both
+check "set picks the user's look over an administrator's" \
+    grep -qxF "regolith.look.path: $user/looks/both" "$user/Xresources.real"
+check "set keeps the user's Xresources a link" test -L "$user/Xresources"
+check "set leaves the administrators' files alone" \
+    cmp -s "$t/admin1.before" "$a1/Xresources"
+check "set leaves the administrators' files alone" \
+    cmp -s "$t/admin2.before" "$a2/Xresources"
+is "set both" t.look "user both"
+is "set both" t.order user
+
+printf '# %s config of the user\n' "$wm" > "$user/$wm/config"
+login
+check "the user's $wm config wins" grep -qxF "$user/$wm/config" "$t/$wm.args"
+check "the look loader does not run again" test "$(cat "$t/loader.count")" = loaded
+
+# An administrator layer that does not preprocess is left out, the rest is not
+printf '#include "no-such-file"\n' >> "$a1/Xresources"
+login
+gone "login with a broken layer" t.admin1
+is "login with a broken layer" t.order user
+is "login with a broken layer" t.admin2 admin2
+
+PATH="$t/bin:$PATH" regolith-diagnostic > "$t/diagnostic" 2>&1 \
+    || { echo "FAIL: $session: regolith-diagnostic failed"; fail=1; }
+for file in "$a2/Xresources" "$a1/Xresources" "$user/Xresources" "$a2/$wm/config" \
+            "$a1/$wm/config" "$user/$wm/config" "$a2/$wm/env" "$user/$wm/env"; do
+    check "diagnostic prints $file" grep -qxF -- "--- $file:" "$t/diagnostic"
+done
+check "diagnostic leaves out the other session's files" \
+    test "$(grep -cF -- "/$other/" "$t/diagnostic")" = 0
+check "diagnostic names the effective $wm config" \
+    grep -qxF "effective $wm config: $user/$wm/config" "$t/diagnostic"
+check "diagnostic names the effective look" \
+    grep -qxF "effective look: $user/looks/both" "$t/diagnostic"
+
+# refresh reloads the window manager while its configuration file is there,
+# and not once it is gone
+echo "$user/$wm/config" > "$t/loaded"
+printf 'regolith.look.path: %s\n' "$a2/looks/admin look" > "$user/Xresources.real"
+rm -f "$t/ipc.log"
+look refresh
+check "refresh reloads $wm" grep -qE '^(-q restart|reload)$' "$t/ipc.log"
+rm "$user/$wm/config"
+rm -f "$t/ipc.log"
+look refresh
+check "refresh does not reload $wm once its config is gone" \
+    test "$(grep -cE '^(-q restart|reload)$' "$t/ipc.log")" = 0
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+fail=0
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" x11 || fail=1
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" wayland || fail=1
+exit $fail

@@ -3,6 +3,8 @@
 
 set -Eeu -o pipefail
 
+source /usr/lib/regolith/regolith-session-common.sh
+
 print_file() {
   if [ -f "$1" ]; then
     echo "--- $1:"
@@ -10,6 +12,40 @@ print_file() {
   else
     echo "--- [$1 does not exist]"
   fi
+}
+
+# Print a settings file of one of the layers, if it counts
+print_settings_file() {
+  if is_settings_file "$1"; then
+    echo "--- $1:"
+    cat "$1"
+    # Start the next header on a line of its own
+    if [ -n "$(tail -c 1 "$1")" ]; then
+      echo
+    fi
+  fi
+}
+
+# Print the settings files of the administrators, the weakest first, and of
+# the user, under <name> in their directories
+print_layer_files() { # print_layer_files <name>
+  local file
+  while IFS= read -r file; do
+    print_settings_file "$file"
+  done < <(layer_settings_files "$1")
+}
+
+# Print a window manager's configuration files, from the weakest to the
+# strongest, its session environment files, and the configuration a new
+# session would start it with
+print_wm_files() { # print_wm_files <i3|sway> <shipped config>
+  print_file "$2"
+  print_layer_files "$1/config"
+  ls -l "/usr/share/regolith/$1/config.d/" || true
+  echo "--- $1 session environment"
+  print_layer_files "$1/env"
+  resolve_wm_config_file "$1" "$2"
+  echo "effective $1 config: $WM_CONFIG_FILE"
 }
 
 print_settings() {
@@ -48,9 +84,22 @@ uname -a
 
 print_file /etc/lsb-release
 
+# The look in use, as the session resolves it from the resource database.
+# From a text console or ssh there may be no database to ask.
+if "$RESOURCE_GETTER" regolith.look.path "" >/dev/null 2>&1; then
+  resolve_look_path "$RESOURCE_GETTER"
+else
+  LOOK_STYLE_ROOT_PATH="" LOOK_STYLE_ROOT_FILE=""
+fi
+
+# The resource sources, from the weakest to the strongest
 echo "--- Xresources"
-print_file "$HOME/.Xresources"
-print_file "$HOME/.config/regolith3/Xresources"
+while IFS= read -r file; do
+  print_settings_file "$file"
+done < <(system_xres_files)
+print_settings_file "$BASELINE_XRESOURCE_FILE"
+print_settings_file "$LOOK_STYLE_ROOT_FILE"
+print_layer_files Xresources
 print_file "$HOME/.cache/regolith3/Xresources-generated"
 
 if $report_sway; then
@@ -60,20 +109,17 @@ fi
 if $report_i3; then
   xrdb -query || true
 fi
+echo "effective look: ${LOOK_STYLE_ROOT_PATH:-[no resource database to read regolith.look.path from]}"
 
 if $report_sway; then
   echo "--- sway"
   sway --version || true
-  print_file "/etc/regolith/sway/config"
-  print_file "$HOME/.config/regolith3/sway/config"
-  ls -l /usr/share/regolith/sway/config.d/ || true
+  print_wm_files sway "$DEFAULT_SYS_SWAY_CONFIG_FILE"
 fi
 if $report_i3; then
   echo "--- i3"
   i3 --moreversion || true
-  print_file "/etc/regolith/i3/config"
-  print_file "$HOME/.config/regolith3/i3/config"
-  ls -l /usr/share/regolith/i3/config.d/ || true
+  print_wm_files i3 "$DEFAULT_SYS_I3_CONFIG_FILE"
 fi
 
 if [ -d "/usr/share/i3xrocks" ]; then
