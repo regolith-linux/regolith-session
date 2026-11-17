@@ -72,14 +72,14 @@ Depends: ${misc:Depends},
     trawlcat,
     trawld,
     trawldb,
-    wl-clipboard,
-    xwayland
+    wl-clipboard
 Recommends:
     sway-audio-idle-inhibit (>= 2.0.0),
-    gnome-terminal,
+    foot,
     regolith-default-settings,
     regolith-wm-rofication-ilia,
-    xdg-desktop-portal-regolith-wayland-config
+    xdg-desktop-portal-regolith-wayland-config,
+    xwayland
 Provides: regolith-desktop-session
 Conflicts: session-shortcuts
 Breaks: regolith-sway-audio-idle-inhibit (<< 4.11.11~)
