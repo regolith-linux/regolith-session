@@ -1,0 +1,238 @@
+#!/bin/sh
+# 'regolith-look font' chooses an interface and a monospace font. The choice
+# is kept in the user's Regolith Xresources and replaces the families of the
+# look's font resources, keeping each resource's own size and style unless
+# the choice gives them. The user's own resources win, the launcher gets a
+# stylesheet with the chosen families, the choice follows a change of look and
+# a login, and resetting it gives back the look's fonts and the file as it
+# was. Checks the X11 (xrdb) and Wayland (trawl) paths with two user looks and
+# the window managers stubbed out.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home"
+looks="$HOME/.config/regolith3/looks"
+mkdir -p "$looks/autopkgtest-a" "$looks/autopkgtest-b" "$tmp/bin"
+
+# The looks' loader forwards the fonts to the desktop settings, as the
+# looks' default loader does
+cat > "$looks/loader.sh" <<'EOF'
+load_look() {
+    gsettings set org.gnome.desktop.interface font-name "$($RESOURCE_GETTER gtk.font_name)"
+    gsettings set org.gnome.desktop.interface monospace-font-name "$($RESOURCE_GETTER gtk.monospace_font_name)"
+}
+EOF
+printf '%s\n' '#window { font-family: "DejaVu Sans Mono"; color: red; }' \
+    '/* font-family: keep this comment */' \
+    'entry { font-family: monospace, sans-serif; }' > "$looks/autopkgtest-a/ilia.css"
+cat > "$looks/autopkgtest-a/root" <<EOF
+regolith.look.loader: $looks/loader.sh
+gtk.font_name: DejaVu Sans 11
+gtk.monospace_font_name: DejaVu Sans Mono 9
+gtk.document_font_name: DejaVu Serif 10
+wm.bar.font: DejaVu Sans Mono Bold 13
+gnome.terminal.font: DejaVu Sans Mono 10
+i3xrocks.label.font: DejaVu Sans Mono Italic 12
+ilia.stylesheet: $looks/autopkgtest-a/ilia.css
+EOF
+cat > "$looks/autopkgtest-b/root" <<EOF
+regolith.look.loader: $looks/loader.sh
+gtk.font_name: DejaVu Sans 15
+gtk.monospace_font_name: DejaVu Sans Mono 15
+gtk.document_font_name: DejaVu Serif 15
+wm.bar.font: DejaVu Sans Mono 16
+gnome.terminal.font: DejaVu Sans Mono 15
+EOF
+mkdir -p "$HOME/.config/regolith3/flags"
+for stub in i3 i3-msg sway swaymsg; do
+    printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/$stub"
+    chmod +x "$tmp/bin/$stub"
+done
+
+Xvfb -displayfd 3 -screen 0 640x480x24 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+DISPLAY=":$(cat "$tmp/display")"
+export DISPLAY
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/bash
+# run <x11|wayland>
+set -eu
+session=$1 fail=0
+export XDG_SESSION_TYPE=$session XDG_RUNTIME_DIR="$AUTOPKGTEST_TMP/xdg-$session"
+export GSETTINGS_BACKEND=dconf
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+looks="$HOME/.config/regolith3/looks"
+user="$HOME/.config/regolith3/Xresources"
+stylesheet="$HOME/.config/regolith3/generated/ilia.css"
+mkdir -p "$HOME/.config/regolith3/Xresources.d"
+printf '! my settings\n#include "mine"\nregolith.look.path: %s/autopkgtest-a' "$looks" > "$user"
+printf 'gnome.terminal.font: Mine 8\n' > "$HOME/.config/regolith3/Xresources.d/mine"
+cp "$user" "$AUTOPKGTEST_TMP/user.orig"
+
+if [ "$session" = x11 ]; then
+    get() { xrdb -query | sed -n "s/^$1:[[:space:]]*//p"; }
+    has() { xrdb -query | grep -q "^$1:"; }
+    login=regolith-session-x11
+else
+    trawld >/dev/null 2>&1 &
+    trawld=$!
+    trap 'kill "$trawld" 2>/dev/null || true' EXIT
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        trawldb -q >/dev/null 2>&1 && break; sleep 0.5
+    done
+    get() { trawldb -q | sed -n "s/^$1[[:space:]]*:[[:space:]]*//p"; }
+    has() { trawldb -q | grep -q "^$1[[:space:]]*:"; }
+    login=regolith-session-wayland
+fi
+login() { # the login path, with the window manager stubbed out
+    NOTIFY_SOCKET="$AUTOPKGTEST_TMP/notify" PATH="$AUTOPKGTEST_TMP/bin:$PATH" \
+        $login >"$AUTOPKGTEST_TMP/login.log" 2>&1 \
+        || { cat "$AUTOPKGTEST_TMP/login.log"; echo "FAIL: $session: $login failed"; fail=1; }
+}
+look() { PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look "$@" >"$AUTOPKGTEST_TMP/look.log" 2>&1 \
+             || { cat "$AUTOPKGTEST_TMP/look.log"; echo "FAIL: $session: regolith-look $* failed"; fail=1; }; }
+refused() { # refused <args...>: the command fails and changes nothing
+    local before
+    before=$(get gtk.monospace_font_name)
+    cp "$user" "$AUTOPKGTEST_TMP/user.before"
+    if PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look "$@" >"$AUTOPKGTEST_TMP/look.log" 2>&1; then
+        echo "FAIL: $session: regolith-look $* succeeded"; fail=1
+    elif ! cmp -s "$user" "$AUTOPKGTEST_TMP/user.before"; then
+        echo "FAIL: $session: regolith-look $* changed the Xresources"; fail=1
+    elif [ "$(get gtk.monospace_font_name)" != "$before" ]; then
+        echo "FAIL: $session: regolith-look $* changed the resources"; fail=1
+    else
+        echo "ok: $session: regolith-look $* is refused: $(head -n 1 "$AUTOPKGTEST_TMP/look.log")"
+    fi
+}
+is() { # is <step> <name> <value>
+    if [ "$(get "$2")" = "$3" ]; then echo "ok: $session: $1: $2 is '$3'"
+    else echo "FAIL: $session: $1: $2 is '$(get "$2")', expected '$3'"; fail=1; fi
+}
+gone() { # gone <step> <name>
+    if has "$2"; then echo "FAIL: $session: $1: $2 is set to '$(get "$2")'"; fail=1
+    else echo "ok: $session: $1: $2 is not set"; fi
+}
+desktop() { # desktop <step> <key> <value>
+    local value
+    value=$(gsettings get org.gnome.desktop.interface "$2")
+    if [ "$value" = "'$3'" ]; then echo "ok: $session: $1: the desktop's $2 is '$3'"
+    else echo "FAIL: $session: $1: the desktop's $2 is $value, expected '$3'"; fail=1; fi
+}
+css() { # css <step> <pattern>
+    local sheet
+    sheet=$(get ilia.stylesheet)
+    if [ "$sheet" = "$stylesheet" ] && grep -qF -- "$2" "$sheet"; then
+        echo "ok: $session: $1: ilia.stylesheet has '$2'"
+    else
+        echo "FAIL: $session: $1: ilia.stylesheet $sheet lacks '$2':"; cat "$sheet"; fail=1
+    fi
+}
+
+login
+is "login" wm.bar.font "DejaVu Sans Mono Bold 13"
+gone "login" i3xrocks.value.font
+
+# Setting a font and resetting it gives the file back byte for byte, here
+# without a newline at its end
+look font set interface "Liberation Sans"
+is "set interface" gtk.font_name "Liberation Sans 11"
+look font reset interface
+if cmp -s "$user" "$AUTOPKGTEST_TMP/user.orig"; then
+    echo "ok: $session: set and reset: the Xresources are as they were, byte for byte"
+else
+    echo "FAIL: $session: set and reset: the Xresources are:"; od -c "$user"; fail=1
+fi
+is "reset interface" gtk.font_name "DejaVu Sans 11"
+# regolith-look set appends its line, so end the file with a newline
+echo >> "$user"
+cp "$user" "$AUTOPKGTEST_TMP/user.orig"
+
+look font set monospace Liberation Mono
+is "set monospace" gtk.monospace_font_name "Liberation Mono 9"
+is "set monospace" wm.bar.font "Liberation Mono Bold 13"
+is "set monospace" i3xrocks.label.font "Liberation Mono Italic 12"
+is "set monospace" i3xrocks.value.font "Liberation Mono 9"
+is "set monospace" gnome.terminal.font "Mine 8"
+is "set monospace" gtk.font_name "DejaVu Sans 11"
+is "set monospace" gtk.document_font_name "DejaVu Serif 10"
+desktop "set monospace" monospace-font-name "Liberation Mono 9"
+css "set monospace" '#window { font-family: "Liberation Mono"; color: red; }'
+css "set monospace" '/* font-family: keep this comment */'
+css "set monospace" 'entry { font-family: "Liberation Mono"; }'
+if [ "$(tail -n 1 "$user")" = "regolith.font.monospace: Liberation Mono" ] \
+   && [ "$(head -n 3 "$user")" = "$(cat "$AUTOPKGTEST_TMP/user.orig")" ]; then
+    echo "ok: $session: set monospace: the Xresources keep their lines and get the setting"
+else
+    echo "FAIL: $session: set monospace: the Xresources are:"; cat "$user"; fail=1
+fi
+
+look font set interface "Liberation Sans Bold 14"
+is "set interface" gtk.font_name "Liberation Sans Bold 14"
+is "set interface" gtk.monospace_font_name "Liberation Mono 9"
+desktop "set interface" font-name "Liberation Sans Bold 14"
+report=$(PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look font)
+if [ "$report" = "$(printf 'interface: Liberation Sans Bold 14\nmonospace: Liberation Mono 9')" ]; then
+    echo "ok: $session: font: reports both fonts"
+else
+    echo "FAIL: $session: font: reports '$report'"; fail=1
+fi
+
+look font set monospace "liberation mono 12px"
+is "set monospace with a size" wm.bar.font "liberation mono Bold 12px"
+refused font set monospace "No Such Family 10"
+refused font set monospace "Liberation Mono 0"
+refused font set monospace
+refused font set serif "Liberation Serif"
+if PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look font list monospace | grep -qx 'Liberation Mono' \
+   && ! PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look font list monospace | grep -qx 'Liberation Sans' \
+   && PATH="$AUTOPKGTEST_TMP/bin:$PATH" regolith-look font list | grep -qx 'Liberation Sans'; then
+    echo "ok: $session: font list: lists the families, and the fixed-width ones"
+else
+    echo "FAIL: $session: font list"; fail=1
+fi
+
+look font set monospace "Liberation Mono"
+look set autopkgtest-b
+is "set look b" gtk.monospace_font_name "Liberation Mono 15"
+is "set look b" wm.bar.font "Liberation Mono 16"
+is "set look b" gtk.font_name "Liberation Sans Bold 14"
+is "set look b" ilia.stylesheet ""
+[ ! -e "$stylesheet" ] || { echo "FAIL: $session: set look b: $stylesheet is still there"; fail=1; }
+look set autopkgtest-a
+
+# A later login, which doesn't run the look's loader, still forwards them
+gsettings reset org.gnome.desktop.interface monospace-font-name
+login
+is "later login" wm.bar.font "Liberation Mono Bold 13"
+desktop "later login" monospace-font-name "Liberation Mono 9"
+
+look font reset monospace
+is "reset monospace" wm.bar.font "DejaVu Sans Mono Bold 13"
+gone "reset monospace" i3xrocks.value.font
+is "reset monospace" gtk.font_name "Liberation Sans Bold 14"
+is "reset monospace" ilia.stylesheet "$looks/autopkgtest-a/ilia.css"
+look font reset
+is "reset" gtk.font_name "DejaVu Sans 11"
+# set autopkgtest-b and back changed the look line; compare the rest
+if diff <(grep -v '^!\?regolith.look.path' "$AUTOPKGTEST_TMP/user.orig") \
+        <(grep -v '^!\?regolith.look.path' "$user") >/dev/null; then
+    echo "ok: $session: reset: the Xresources are as they were"
+else
+    echo "FAIL: $session: reset: the Xresources are:"; cat "$user"; fail=1
+fi
+look font reset
+
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+fail=0
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" x11 || fail=1
+rm -rf "$HOME/.config/regolith3/Xresources" "$HOME/.config/regolith3/generated" "$HOME/.config/dconf"
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run" wayland || fail=1
+exit $fail

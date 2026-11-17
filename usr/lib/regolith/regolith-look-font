@@ -1,0 +1,321 @@
+#!/usr/bin/python3
+# Font settings for Regolith looks.
+#
+# The user picks one face for ordinary text (regolith.font.interface) and one
+# for fixed-width text (regolith.font.monospace) in their Regolith Xresources.
+# Each setting reaches a set of font resources of the look. A reached key gets
+# the setting's families, and its style and size where the setting carries
+# them; otherwise it keeps the look's own style and size for that key.
+# Keys the user sets in their own files keep the user's value.
+#
+# Commands:
+#   check <description>
+#       Exit non-zero, with a message, unless every family the description
+#       names is installed, or is one of fontconfig's generic families, and
+#       its size, if any, is positive.
+#   edit <file> <kind>... [--value <description>]
+#       Remove the settings of the given kinds from the file, keeping every
+#       other line byte for byte; with --value, add the setting for the kind.
+#   derive <user-file> <search-path> <stylesheet>
+#       Read the resource database, as 'xrdb -query' or 'trawldb --query'
+#       print it, on standard input and print the resources to merge into it
+#       for the chosen settings. The derived launcher stylesheet is written
+#       to <stylesheet>, or removed when it isn't needed.
+
+import os
+import re
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Pango", "1.0")
+from gi.repository import Pango  # noqa: E402
+
+KINDS = ("interface", "monospace")
+SETTING_KEY = {kind: "regolith.font." + kind for kind in KINDS}
+BASE_KEY = {
+    "interface": "gtk.font_name",
+    "monospace": "gtk.monospace_font_name",
+}
+FIXED_KEYS = {
+    "interface": ["gtk.font_name"],
+    "monospace": [
+        "gtk.monospace_font_name",
+        "wm.bar.font",
+        "gnome.terminal.font",
+        # i3xrocks' own default for the blocks' text
+        "i3xrocks.value.font",
+    ],
+}
+STYLESHEET_KEY = "ilia.stylesheet"
+XRES_CPP = "/usr/lib/regolith/regolith-xres-cpp"
+
+
+def fail(message):
+    print("regolith-look: " + message, file=sys.stderr)
+    sys.exit(1)
+
+
+# --- Font descriptions ----------------------------------------------------
+
+def families_of(desc):
+    family = desc.get_family() or ""
+    return [name.strip() for name in family.split(",") if name.strip()]
+
+
+def is_style_word(word):
+    """True if Pango reads the word as a weight, slant, stretch or variant."""
+    probe = Pango.FontDescription.from_string("A " + word + " 1")
+    if probe.get_family() != "A":
+        return False
+    return not probe.get_set_fields() & Pango.FontMask.GRAVITY
+
+
+def carries_style(text):
+    """True if the description names a weight, slant, stretch or variant.
+
+    Pango fills in the default style for every description, so look at the
+    words between the families and the size instead.
+    """
+    desc = Pango.FontDescription.from_string(text)
+    family = desc.get_family() or ""
+    normalised = re.sub(r"\s*,\s*", ",", text.strip())
+    rest = normalised
+    if normalised.startswith(family):
+        rest = normalised[len(family):]
+    words = [word for word in re.split(r"[\s,]+", rest)
+             if word and not word.startswith(("@", "#"))]
+    if desc.get_set_fields() & Pango.FontMask.SIZE and words:
+        words.pop()
+    return any(is_style_word(word) for word in words)
+
+
+def derive(setting, look_value):
+    """The value of a reached key, from the setting and the look's value."""
+    chosen = Pango.FontDescription.from_string(setting)
+    result = Pango.FontDescription.from_string(look_value)
+    families = families_of(chosen)
+    if families:
+        result.set_family(",".join(families))
+    if carries_style(setting):
+        result.set_weight(chosen.get_weight())
+        result.set_style(chosen.get_style())
+        result.set_stretch(chosen.get_stretch())
+        result.set_variant(chosen.get_variant())
+    if chosen.get_variations():
+        result.set_variations(chosen.get_variations())
+    if chosen.get_set_fields() & Pango.FontMask.SIZE and chosen.get_size() > 0:
+        if chosen.get_size_is_absolute():
+            result.set_absolute_size(chosen.get_size())
+        else:
+            result.set_size(chosen.get_size())
+    return result.to_string()
+
+
+# --- The font catalogue ---------------------------------------------------
+
+# fontconfig's generic families, which are aliases rather than installed
+# families
+GENERIC_FAMILIES = {"sans", "sans-serif", "serif", "monospace", "mono",
+                    "system-ui"}
+
+
+def catalogue():
+    output = subprocess.run(["fc-list", "-f", "%{family}\n"], check=True,
+                            stdout=subprocess.PIPE,
+                            universal_newlines=True).stdout
+    return {name.strip() for line in output.splitlines()
+            for name in line.split(",") if name.strip()}
+
+
+def check(args):
+    if len(args) != 1 or not args[0].strip():
+        fail("a font description is required")
+    text = args[0]
+    if "\n" in text:
+        fail("a font description is one line")
+    desc = Pango.FontDescription.from_string(text)
+    names = families_of(desc)
+    if not names:
+        fail("no font family in '%s'" % text)
+    installed = {name.casefold() for name in catalogue()} | GENERIC_FAMILIES
+    for name in names:
+        if name.casefold() not in installed:
+            fail("font family '%s' is not installed; "
+                 "'regolith-look font list' shows the installed families"
+                 % name)
+    # Pango reads a size that is not a positive number as part of the family,
+    # which the check above refuses; zero reaches here as a size.
+    if desc.get_set_fields() & Pango.FontMask.SIZE and desc.get_size() <= 0:
+        fail("the font size in '%s' must be positive" % text)
+
+
+# --- The user's resource file ---------------------------------------------
+
+def edit(args):
+    value = None
+    if "--value" in args:
+        index = args.index("--value")
+        value = args[index + 1]
+        args = args[:index] + args[index + 2:]
+    path, kinds = args[0], args[1:]
+    try:
+        with open(path, "rb") as handle:
+            content = handle.read()
+    except FileNotFoundError:
+        if value is None:
+            return
+        content = b""
+    if content:
+        newline = content.endswith(b"\n")
+        lines = (content[:-1] if newline else content).split(b"\n")
+    else:
+        newline, lines = True, []
+    entry = re.compile(rb"^\s*regolith\.font\.(%s)\s*:" %
+                       b"|".join(re.escape(kind.encode()) for kind in kinds))
+    kept = [line for line in lines if not entry.match(line)]
+    if value is not None:
+        kept.append(("%s: %s" % (SETTING_KEY[kinds[0]], value)).encode())
+    if kept == lines:
+        return
+    result = b"\n".join(kept)
+    if kept and newline:
+        result += b"\n"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as handle:
+        handle.write(result)
+
+
+def user_keys(user_file, search_path):
+    """Resource names the user's file sets, itself or through its includes."""
+    if not os.path.isfile(user_file):
+        return set()
+    result = subprocess.run(
+        [XRES_CPP, "-P", "-I" + search_path, user_file],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        universal_newlines=True)
+    keys = set()
+    for line in result.stdout.replace("\\\n", "").splitlines():
+        line = line.strip()
+        if not line or line.startswith(("!", "#")) or ":" not in line:
+            continue
+        keys.add(line.split(":", 1)[0].strip())
+    return keys
+
+
+# --- The launcher's stylesheet --------------------------------------------
+
+CSS_TOKENS = re.compile(
+    r"""(?P<comment>/\*.*?\*/)"""
+    r"""|(?P<head>(?<![\w-])font-family\s*:\s*)"""
+    r"""(?P<value>(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^;{}"'])*?)"""
+    r"""(?P<tail>\s*(?:!\s*important\s*)?)(?=[;}]|$)""",
+    re.S | re.I)
+
+
+def css_string(name):
+    return '"' + name.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def derive_stylesheet(css, names):
+    """The stylesheet with every font-family declaration set to the names,
+    or None when it declares no font-family."""
+    families = ", ".join(css_string(name) for name in names)
+    found = []
+
+    def replace(match):
+        if match.group("comment"):
+            return match.group(0)
+        found.append(True)
+        return match.group("head") + families + match.group("tail")
+
+    derived = CSS_TOKENS.sub(replace, css)
+    return derived if found else None
+
+
+def write_atomically(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    temp = "%s.%d.tmp" % (path, os.getpid())
+    with open(temp, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    os.replace(temp, path)
+
+
+# --- Deriving the resources -------------------------------------------------
+
+def parse_dump(lines):
+    resources = {}
+    for line in lines:
+        name, sep, value = line.rstrip("\n").partition(":")
+        if sep:
+            resources[name.strip()] = value.strip()
+    return resources
+
+
+def reached_keys(kind, resources):
+    keys = list(FIXED_KEYS[kind])
+    if kind == "monospace":
+        keys += sorted(name for name in resources
+                       if name.startswith("i3xrocks.")
+                       and name.endswith(".font")
+                       and name not in keys)
+    return keys
+
+
+def derive_resources(args):
+    user_file, search_path, stylesheet = args
+    resources = parse_dump(sys.stdin)
+    own = user_keys(user_file, search_path)
+    merged = {}
+    for kind in KINDS:
+        setting = resources.get(SETTING_KEY[kind], "")
+        if not setting:
+            continue
+        base = resources.get(BASE_KEY[kind], "")
+        for key in reached_keys(kind, resources):
+            if key in own:
+                continue
+            look_value = resources.get(key, "") or base
+            if look_value:
+                merged[key] = derive(setting, look_value)
+            else:
+                merged[key] = setting
+
+    monospace = resources.get(SETTING_KEY["monospace"], "")
+    look_sheet = resources.get(STYLESHEET_KEY, "")
+    derived_css = None
+    names = families_of(Pango.FontDescription.from_string(monospace))
+    if names and look_sheet:
+        try:
+            with open(look_sheet, encoding="utf-8") as handle:
+                css = handle.read()
+        except (OSError, UnicodeDecodeError):
+            css = ""
+        derived_css = derive_stylesheet(css, names)
+    if derived_css is not None:
+        write_atomically(stylesheet, derived_css)
+        merged[STYLESHEET_KEY] = stylesheet
+    elif os.path.lexists(stylesheet):
+        os.unlink(stylesheet)
+
+    for key, value in merged.items():
+        print("%s: %s" % (key, value))
+
+
+def main(argv):
+    if not argv:
+        fail("usage: regolith-look-font check|edit|derive ...")
+    command, args = argv[0], argv[1:]
+    if command == "check":
+        check(args)
+    elif command == "edit":
+        edit(args)
+    elif command == "derive":
+        derive_resources(args)
+    else:
+        fail("unknown command: " + command)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

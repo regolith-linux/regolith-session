@@ -41,6 +41,10 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
         # 'regolith-look refresh' or 'regolith-look set' apply it again
         mkdir -p "$UPDATE_FLAG_DIR"
     fi
+else
+    # Except the fonts chosen with 'regolith-look font', which follow the
+    # resources at every login
+    apply_font_desktop_settings
 fi
 
 # Set XDG_CURRENT_DESKTOP
