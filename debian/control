@@ -25,6 +25,7 @@ Depends: ${misc:Depends},
     xorg,
     xrescat
 Recommends:
+    gnome-terminal,
     i3-next-workspace,
     i3xrocks-battery,
     i3xrocks-cpu-usage,
