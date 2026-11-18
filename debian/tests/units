@@ -127,6 +127,20 @@ expect gnome-session-x11@regolith-x11.target BindsTo gnome-session.target
 expect regolith-wayland.service OnFailure gnome-session-shutdown.target
 expect regolith-wayland.service OnSuccess gnome-session-shutdown.target
 
+# trawld restarts on its own. A hard dependency on it would stop sway each
+# time it does, and the OnSuccess= above would end the session; the
+# session-trawld-restart test runs that in a real session.
+expect regolith-wayland.service Wants trawld.service
+expect regolith-wayland.service After trawld.service
+for directive in Requires Requisite BindsTo PartOf; do
+    case " $(deps regolith-wayland.service $directive) " in
+        *" trawld.service "*)
+            echo "FAIL: regolith-wayland.service has $directive=trawld.service"
+            fail=1 ;;
+        *) echo "ok: regolith-wayland.service has no $directive=trawld.service" ;;
+    esac
+done
+
 # 4. Every OnFailure= and OnSuccess= handler must exist on this release;
 #    systemd only logs "not found" when it cannot enqueue one, and the exit
 #    goes unhandled.

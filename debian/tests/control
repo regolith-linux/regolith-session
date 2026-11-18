@@ -20,6 +20,16 @@ Depends: regolith-session-flashback,
          gnome-session-common
 Restrictions: allow-stderr
 
+Tests: session-trawld-restart
+Depends: regolith-session-sway,
+         gnome-session-bin,
+         foot,
+         procps,
+         dbus-user-session,
+         libpam-systemd,
+         systemd
+Restrictions: needs-root, isolation-container, allow-stderr, skippable
+
 Tests: session-environment
 Depends: regolith-session-flashback,
          regolith-session-sway,

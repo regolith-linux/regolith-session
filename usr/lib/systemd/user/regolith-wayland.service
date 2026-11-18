@@ -21,7 +21,12 @@ PartOf=regolith-wayland.target
 BindsTo=regolith-wayland.target
 After=regolith-wayland.target
 
-Requires=trawld.service
+# The session reads its resources from trawld, so start it first. Wants=, not
+# Requires=: trawld restarts on its own (Restart=always), and with Requires=
+# systemd would stop sway each time trawld stops, ending the session through
+# OnSuccess= above.
+Wants=trawld.service
+After=trawld.service
 
 ConditionEnvironment=XDG_SESSION_TYPE=wayland
 
