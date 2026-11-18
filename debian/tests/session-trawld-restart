@@ -1,0 +1,211 @@
+#!/bin/sh
+# trawld restarts on its own when it crashes (Restart=always) and can be
+# restarted with "systemctl --user restart trawld". Neither may end the sway
+# session: with Requires=trawld.service, systemd stopped sway together with
+# trawld, the stop counted as success, and regolith-wayland.service's
+# OnSuccess= ended the session, closing every window.
+#
+# Logs a user in to the Regolith sway session through PAM and logind, as a
+# display manager does, with sway on wlroots' headless backend. Opens a
+# window, then ends trawld with SIGKILL and with "systemctl --user restart",
+# and checks that sway keeps its PID, the window stays open, and trawld is
+# back. Then checks that logging out still ends the session, and that sway
+# crashing still does too.
+set -eu
+
+if [ ! -d /run/systemd/system ] ||
+   ! busctl --system status org.freedesktop.login1 >/dev/null 2>&1; then
+    echo "SKIP: needs systemd as init and systemd-logind"
+    exit 77
+fi
+
+user=regolith-autopkgtest
+login_unit=regolith-autopkgtest-login
+title=regolith-autopkgtest-window
+created=no
+if ! id "$user" >/dev/null 2>&1; then
+    useradd --create-home --shell /bin/sh "$user"
+    created=yes
+fi
+uid=$(id -u "$user")
+home=$(getent passwd "$user" | cut -d: -f6)
+rt=/run/user/$uid
+fail=0
+mark=$(date '+%Y-%m-%d %H:%M:%S')
+
+cleanup() {
+    systemctl stop "$login_unit" >/dev/null 2>&1 || true
+    systemctl reset-failed "$login_unit" >/dev/null 2>&1 || true
+    loginctl terminate-user "$user" >/dev/null 2>&1 || true
+    if [ $created = yes ]; then
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            pgrep -u "$uid" >/dev/null 2>&1 || break
+            sleep 1
+        done
+        userdel --remove "$user" >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
+
+# as_user <command...>: run in the user's manager and session bus
+as_user() {
+    runuser -u "$user" -- env XDG_RUNTIME_DIR="$rt" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$rt/bus" "$@"
+}
+uctl() { as_user systemctl --user "$@"; }
+sway_pid() { pgrep -u "$uid" -x sway || true; }
+trawld_pid() { uctl show -p MainPID --value trawld.service 2>/dev/null || echo 0; }
+trawld_back() {
+    p=$(trawld_pid)
+    [ "$p" != 0 ] && [ "$p" != "$old_trawld" ]
+}
+wm_env() { uctl show-environment 2>/dev/null | sed -n "s/^$1=//p"; }
+window_open() {
+    sock=$(wm_env SWAYSOCK)
+    [ -n "$sock" ] &&
+        as_user swaymsg -s "$sock" -t get_tree 2>/dev/null | grep -q "\"$title\""
+}
+# step <name>: start a step; journal shows what the user manager logged since
+step() {
+    echo "=== $1"
+    mark=$(date '+%Y-%m-%d %H:%M:%S')
+}
+journal() {
+    echo "--- user manager journal"
+    journalctl --no-pager -q --since "$mark" _UID="$uid" -o cat \
+        | grep -E 'trawld|regolith-wayland|OnSuccess|OnFailure|gnome-session-shutdown' \
+        | tail -n 40 || true
+}
+# wait_for <seconds> <command...>
+wait_for() {
+    n=$1
+    shift
+    while [ "$n" -gt 0 ]; do
+        "$@" && return 0
+        sleep 1
+        n=$((n - 1))
+    done
+    return 1
+}
+session_up() {
+    [ "$(uctl is-active regolith-wayland.service 2>/dev/null)" = active ] &&
+        [ -n "$(sway_pid)" ] && [ -n "$(wm_env SWAYSOCK)" ] &&
+        [ -n "$(wm_env WAYLAND_DISPLAY)" ]
+}
+session_gone() {
+    ! systemctl -q is-active "$login_unit" && [ -z "$(sway_pid)" ]
+}
+
+login() {
+    systemctl reset-failed "$login_unit" >/dev/null 2>&1 || true
+    systemd-run --quiet --unit="$login_unit" \
+        -p PAMName=login -p User="$user" -p WorkingDirectory="$home" \
+        -E XDG_SESSION_TYPE=wayland -E XDG_SESSION_CLASS=user \
+        -E XDG_SESSION_DESKTOP=regolith-wayland \
+        -E WLR_BACKENDS=headless -E WLR_RENDERER=pixman \
+        -E WLR_LIBINPUT_NO_DEVICES=1 -E WLR_HEADLESS_OUTPUTS=1 \
+        -E LANG=C.UTF-8 \
+        /usr/bin/regolith-session-wayland-launch
+    if ! wait_for 90 session_up; then
+        echo "FAIL: the sway session did not start"
+        journalctl --no-pager -q --since "$mark" -u "$login_unit" | tail -n 20
+        journal
+        exit 1
+    fi
+    sleep 3
+}
+
+# check_survives <how>: the session, sway and the window outlived trawld,
+# which is back with a new process
+check_survives() {
+    how=$1
+    wait_for 15 trawld_back || true
+    # Let a stop that Requires= would propagate run its course.
+    sleep 4
+    now_sway=$(sway_pid)
+    now_trawld=$(trawld_pid)
+    state=$(uctl is-active regolith-wayland.service 2>/dev/null || true)
+    echo "after $how: regolith-wayland=$state sway=${now_sway:-none}" \
+         "trawld=$now_trawld (was $old_trawld)"
+    ok=yes
+    [ "$state" = active ] || ok=no
+    [ "$now_sway" = "$sway" ] || ok=no
+    if window_open; then
+        echo "  window $title: open"
+    else
+        echo "  window $title: gone"
+        ok=no
+    fi
+    if [ "$now_trawld" = 0 ] || [ "$now_trawld" = "$old_trawld" ]; then
+        echo "  trawld did not come back"
+        ok=no
+    fi
+    if [ $ok = yes ]; then
+        echo "ok: the session survives trawld ($how)"
+    else
+        echo "FAIL: trawld ($how) took the session down"
+        journal
+        fail=1
+    fi
+}
+
+# open_session: log in, check trawld runs, open the test window
+open_session() {
+    systemctl stop "$login_unit" >/dev/null 2>&1 || true
+    login
+    sway=$(sway_pid)
+    if [ "$(trawld_pid)" = 0 ]; then
+        echo "FAIL: the session did not start trawld"
+        journal
+        exit 1
+    fi
+    uctl stop regolith-autopkgtest-window.service >/dev/null 2>&1 || true
+    uctl reset-failed regolith-autopkgtest-window.service >/dev/null 2>&1 || true
+    as_user systemd-run --user --quiet --unit=regolith-autopkgtest-window \
+        foot --title="$title" sleep infinity
+    if ! wait_for 20 window_open; then
+        echo "FAIL: the test window did not open"
+        exit 1
+    fi
+    echo "session up: sway=$sway trawld=$(trawld_pid) window $title open"
+}
+
+step "login"
+open_session
+
+step "trawld crash (SIGKILL)"
+old_trawld=$(trawld_pid)
+kill -KILL "$old_trawld"
+check_survives SIGKILL
+session_up || open_session
+
+step "systemctl --user restart trawld"
+old_trawld=$(trawld_pid)
+uctl restart trawld.service
+check_survives restart
+session_up || open_session
+
+step "logout"
+as_user gnome-session-quit --logout --no-prompt
+if wait_for 30 session_gone; then
+    echo "ok: logging out ends the session"
+else
+    echo "FAIL: the session is still running 30 s after logging out"
+    journal
+    fail=1
+fi
+
+step "sway crash (SIGKILL)"
+systemctl stop "$login_unit" >/dev/null 2>&1 || true
+login
+sway=$(sway_pid)
+kill -KILL "$sway"
+if wait_for 30 session_gone; then
+    echo "ok: sway crashing ends the session"
+else
+    echo "FAIL: the session is still running 30 s after sway crashed"
+    journal
+    fail=1
+fi
+
+exit $fail
