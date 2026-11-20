@@ -38,14 +38,179 @@ sway_restyle_existing() {
     done
 }
 
+# Open workspaces keep their names when the window manager reloads, so new
+# wm.workspace.NN.name values would only reach workspaces opened afterwards,
+# and the workspace keys would open a second workspace N next to the old one.
+# A refresh therefore renames every open workspace that still has the name
+# Regolith gave it: OLD_WORKSPACE_NAMES[N] before the refresh,
+# NEW_WORKSPACE_NAMES[N] after it (see workspace_names).
+declare -a OLD_WORKSPACE_NAMES=() NEW_WORKSPACE_NAMES=()
+
+# wm_msg <args>: run the IPC client of the session's window manager
+wm_msg() {
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
+        swaymsg "$@"
+    else
+        i3-msg "$@"
+    fi
+}
+
+# wm_quoted_name <name>: print the name in double quotes, as an argument of a
+# window manager command. i3 unescapes \\ and \" in quoted text. sway takes
+# quoted text as it is but expands its variables there, and turns line
+# breaks into command separators, so this fails for a name with a double
+# quote, a "$", a line break or a final backslash in sway.
+wm_quoted_name() {
+    local name=$1
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
+        if [[ $name == *[$'\n'\"\$]* || $name == *\\ ]]; then
+            return 1
+        fi
+    else
+        name=${name//\\/\\\\}
+        name=${name//\"/\\\"}
+    fi
+    printf '"%s"' "$name"
+}
+
+# wm_rename_workspace <old> <new>: rename the workspace named <old>. Both
+# window managers look workspaces up by name ignoring case, and sway leaves a
+# workspace as it is when the new name differs only in case, so there such a
+# rename goes through a temporary name.
+wm_rename_workspace() {
+    local old new detour
+    old=$(wm_quoted_name "$1") && new=$(wm_quoted_name "$2") || return 1
+    if [[ ${XDG_SESSION_TYPE-} == "wayland" && ${1,,} == "${2,,}" ]]; then
+        detour=$(wm_quoted_name "$2 (renaming)") || return 1
+        swaymsg -q "rename workspace $old to $detour" || return 1
+        old=$detour
+    fi
+    wm_msg -q "rename workspace $old to $new"
+}
+
+# wm_placement: print "id<TAB>output<TAB>visible<TAB>focused" for every
+# workspace, then "window<TAB>id" for the focused window, if any
+wm_placement() {
+    wm_msg -t get_workspaces 2>/dev/null \
+        | jq -r '.[] | [.id, .output, .visible, .focused] | @tsv' 2>/dev/null || true
+    wm_msg -t get_tree 2>/dev/null \
+        | jq -r '.. | objects | select(.focused and (.type == "con" or .type == "floating_con"))
+                 | "window\t\(.id)"' 2>/dev/null || true
+}
+
+# restore_placement <placement>: put back what wm_placement printed before the
+# renames. i3 moves a renamed workspace to the output that a "workspace <name>
+# output" line assigns to its new name, so move each workspace back to its
+# output, show again on each output the workspace it showed, and focus the
+# workspace and the window that had the focus.
+restore_placement() {
+    local before=$1 id output visible focused name show target
+    local moves="" shows="" focus_workspace="" focus_window="" cmd
+    local -A names=() outputs=()
+    [ "$(wm_placement)" != "$before" ] || return 0
+
+    while IFS= read -r -d '' id && IFS= read -r -d '' output && IFS= read -r -d '' name; do
+        names[$id]=$name
+        outputs[$id]=$output
+    done < <(wm_msg -t get_workspaces 2>/dev/null \
+        | jq -j '.[] | "\(.id)\u0000\(.output)\u0000" + .name + "\u0000"' 2>/dev/null)
+
+    while IFS=$'\t' read -r id output visible focused; do
+        if [ "$id" == window ]; then
+            focus_window="[con_id=$output] focus; "
+            continue
+        fi
+        [ -n "${names[$id]+set}" ] || continue
+        show=$(wm_quoted_name "${names[$id]}") || continue
+        show="workspace --no-auto-back-and-forth $show; "
+        if [ "${outputs[$id]}" != "$output" ] && target=$(wm_quoted_name "$output"); then
+            moves+="${show}move workspace to output $target; "
+        fi
+        if [ "$focused" == true ]; then
+            focus_workspace=$show
+        elif [ "$visible" == true ]; then
+            shows+=$show
+        fi
+    done <<< "$before"
+
+    cmd=$moves$shows$focus_workspace$focus_window
+    if [ -n "$cmd" ]; then
+        wm_msg -q "${cmd%; }" >/dev/null 2>&1 || true
+    fi
+}
+
+# rename_open_workspaces: after the reload, rename each open workspace named
+# OLD_WORKSPACE_NAMES[N] to NEW_WORKSPACE_NAMES[N], once. Workspaces with any
+# other name, such as one the user renamed, stay as they are, and so does one
+# whose new name another open workspace has (the window managers compare
+# names ignoring case).
+rename_open_workspaces() {
+    local placement n old new name taken renamed=0
+    local -a open=() unrenamed=() kept=()
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq is not installed, not renaming the open workspaces" >&2
+        return 0
+    fi
+
+    # i3 starts again after a restart; wait until it answers
+    for _ in $(seq 50); do
+        wm_msg -t get_version >/dev/null 2>&1 && break
+        sleep 0.1
+    done
+    while IFS= read -r -d '' name; do
+        open+=("$name")
+    done < <(wm_msg -t get_workspaces 2>/dev/null | jq -j '.[] | .name + "\u0000"' 2>/dev/null)
+    unrenamed=("${open[@]}")
+    placement=$(wm_placement)
+
+    for n in $(seq "$WORKSPACE_NAME_COUNT"); do
+        old=${OLD_WORKSPACE_NAMES[n]} new=${NEW_WORKSPACE_NAMES[n]}
+        [ "$old" != "$new" ] || continue
+        taken=missing
+        for name in "${unrenamed[@]}"; do
+            [ "$name" != "$old" ] || taken=""
+        done
+        [ -z "$taken" ] || continue
+        for name in "${open[@]}"; do
+            if [ "$name" != "$old" ] && [ "${name,,}" == "${new,,}" ]; then
+                taken=$name
+                break
+            fi
+        done
+        if [ -n "$taken" ]; then
+            echo "Not renaming workspace \"$old\" to \"$new\": workspace \"$taken\" already exists" >&2
+            continue
+        fi
+        if ! wm_rename_workspace "$old" "$new" >/dev/null 2>&1; then
+            echo "Could not rename workspace \"$old\" to \"$new\"" >&2
+            continue
+        fi
+        renamed=$((renamed + 1))
+        kept=()
+        for name in "${open[@]}"; do
+            [ "$name" == "$old" ] || kept+=("$name")
+        done
+        open=("${kept[@]}" "$new")
+        kept=()
+        for name in "${unrenamed[@]}"; do
+            [ "$name" == "$old" ] || kept+=("$name")
+        done
+        unrenamed=("${kept[@]}")
+    done
+    [ "$renamed" -eq 0 ] || restore_placement "$placement"
+}
+
 refresh() {
     if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
         WM_RELOAD="swaymsg reload"
+        workspace_names OLD_WORKSPACE_NAMES # before the resources change
         reload_sway_resources
         swaymsg -t send_tick '{"status": "reload_pending"}'
     else
+        workspace_names OLD_WORKSPACE_NAMES # before the resources change
         reload_i3_resources
     fi
+    workspace_names NEW_WORKSPACE_NAMES
 
     # Determine if Look loader script is available
     LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
@@ -57,6 +222,8 @@ refresh() {
 
         # restart window manager after merging Xresources
         $WM_RELOAD
+        # The open workspaces keep their names: rename those Regolith named
+        rename_open_workspaces
         if [[ ${XDG_SESSION_TYPE-} == "wayland" ]]; then
             sway_restyle_existing
         fi

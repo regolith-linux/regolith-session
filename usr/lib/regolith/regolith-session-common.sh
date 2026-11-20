@@ -116,6 +116,219 @@ trawl_sway_cleanup() {
     trawldb --nocpp --merge $XDG_RUNTIME_DIR/trawl_sway_cleanup.tmp
 }
 
+# Workspace names
+# The workspace keys run "workspace number $wsN", where $wsN is the value of
+# wm.workspace.NN.name, for the workspaces 1 to 19. The window managers take
+# the number of the workspace from the leading digits of the name, so a name
+# without them (wm.workspace.01.name: terminal), or one that starts with
+# another number (wm.workspace.04.name: 2024 plans), breaks the keys of that
+# workspace, and an empty name breaks them in i3.
+WORKSPACE_NAME_COUNT=19
+
+# workspace_name_with_number <N> <value>: print the value in the form the
+# workspace keys of workspace N need: as it is if its leading digits are the
+# number N (1, 01, 1: term), N if it is empty, otherwise N: and the value.
+workspace_name_with_number() {
+    local n=$1 value=$2 digits
+    digits=${value%%[!0-9]*}
+    while [[ $digits == 0?* ]]; do
+        digits=${digits#0}
+    done
+    if [ -z "$value" ]; then
+        printf '%s' "$n"
+    elif [ "$digits" = "$n" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s:%s' "$n" "$value"
+    fi
+}
+
+# workspace_name_values <array>: read the lines of xrdb -query or trawldb
+# --query from stdin and set <array>[N] to the value of wm.workspace.NN.name
+# as the database lists it: xrdb escapes backslashes and line breaks, trawl
+# keeps the text of the file. Unset names stay unset.
+# shellcheck disable=SC2034 # values_ref is the caller's array
+workspace_name_values() {
+    local -n values_ref=$1
+    local line key n
+    values_ref=()
+    while IFS= read -r line || [ -n "$line" ]; do
+        key=${line%%:*}
+        [[ $key =~ ^wm\.workspace\.([0-9][0-9])\.name[[:space:]]*$ ]] || continue
+        n=$((10#${BASH_REMATCH[1]}))
+        (( n >= 1 && n <= WORKSPACE_NAME_COUNT )) || continue
+        line=${line#*:}
+        values_ref[n]=${line#"${line%%[![:space:]]*}"}
+    done
+}
+
+# numbered_workspace_name_lines: read the lines of xrdb -query or trawldb
+# --query from stdin and print a resource line for each wm.workspace.NN.name
+# that lacks the number of its workspace. Unset names stay unset: the window
+# manager configs default them to N. The values stay as the database lists
+# them, so they merge back unchanged.
+numbered_workspace_name_lines() {
+    local -a values=()
+    local n stored
+    workspace_name_values values
+    for n in "${!values[@]}"; do
+        stored=$(workspace_name_with_number "$n" "${values[n]}")
+        if [ "$stored" != "${values[n]}" ]; then
+            printf 'wm.workspace.%02d.name: %s\n' "$n" "$stored"
+        fi
+    done
+}
+
+# Give every workspace name the number of its workspace, in the X resources
+xres_number_workspace_names() {
+    local lines
+    lines=$(xrdb -query | numbered_workspace_name_lines)
+    if [ -n "$lines" ]; then
+        printf '%s\n' "$lines" | xrdb -nocpp -merge
+    fi
+}
+
+# Give every workspace name the number of its workspace, in trawl
+trawl_number_workspace_names() {
+    local lines
+    lines=$(trawldb --query wm.workspace. | numbered_workspace_name_lines)
+    if [ -n "$lines" ]; then
+        printf '%s\n' "$lines" > "$XDG_RUNTIME_DIR/trawl_workspace_names.tmp"
+        trawldb --nocpp --merge "$XDG_RUNTIME_DIR/trawl_workspace_names.tmp"
+    fi
+}
+
+# i3_workspace_name <value>: print the name i3 gives the workspace of a
+# wm.workspace.NN.name value as xrdb -query lists it. i3 reads the resource
+# with xcb-xrm, which turns \\, \n and octal escapes into characters and keeps
+# other backslashes. The workspace keys then pass it unquoted to the workspace
+# command, whose name ends at a ";", a "," or a line break and which turns \\
+# and \" into \ and ".
+i3_workspace_name() {
+    local in=$1 out="" c next i=0
+    while [ "$i" -lt "${#in}" ]; do
+        c=${in:i:1}
+        next=${in:i+1:1}
+        if [ "$c" = "\\" ] && [ "$next" = "\\" ]; then
+            out+="\\"; i=$((i + 2))
+        elif [ "$c" = "\\" ] && [ "$next" = n ]; then
+            out+=$'\n'; i=$((i + 2))
+        elif [ "$c" = "\\" ] && [[ ${in:i+1:3} =~ ^[0-7]{3}$ ]]; then
+            printf -v c '%b' "\\0${in:i+1:3}"
+            out+=$c; i=$((i + 4))
+        else
+            out+=$c; i=$((i + 1))
+        fi
+    done
+    in=${out#"${out%%[!$' \t']*}"}
+    in=${in%%[;,$'\r\n']*}
+    out="" i=0
+    while [ "$i" -lt "${#in}" ]; do
+        c=${in:i:1}
+        next=${in:i+1:1}
+        if [ "$c" = "\\" ] && { [ "$next" = "\\" ] || [ "$next" = '"' ]; }; then
+            c=$next; i=$((i + 1))
+        fi
+        out+=$c; i=$((i + 1))
+    done
+    printf '%s' "${out:-}"
+}
+
+# sway_unescape <text>: print the text as sway's config reader unescapes the
+# arguments of a line: C escapes become characters, \0 ends the text, a
+# trailing backslash goes and other backslashes stay.
+sway_unescape() {
+    local in=$1 out="" c hex i=0
+    while [ "$i" -lt "${#in}" ]; do
+        c=${in:i:1}
+        i=$((i + 1))
+        if [ "$c" != "\\" ]; then
+            out+=$c
+            continue
+        fi
+        c=${in:i:1}
+        i=$((i + 1))
+        case $c in
+            '') ;;
+            0) break ;;
+            a) out+=$'\a' ;;
+            b) out+=$'\b' ;;
+            f) out+=$'\f' ;;
+            n) out+=$'\n' ;;
+            r) out+=$'\r' ;;
+            t) out+=$'\t' ;;
+            v) out+=$'\v' ;;
+            "\\" | "'" | '"' | '?') out+=$c ;;
+            x)
+                hex=${in:i:2}
+                hex=${hex%%[!0-9A-Fa-f]*}
+                if [ -n "$hex" ]; then
+                    printf -v c '%b' "\\x$hex"
+                    out+=$c; i=$((i + ${#hex}))
+                else
+                    out+="\\x"
+                fi ;;
+            *) out+="\\$c" ;;
+        esac
+    done
+    printf '%s' "$out"
+}
+
+# sway_workspace_name <value>: print the name sway gives the workspace of a
+# wm.workspace.NN.name value as trawl holds it. The sway config sets $wsN to
+# the value in double quotes and binds the workspace keys to "workspace
+# number $wsN"; both lines unescape it. Running the binding then drops the
+# quotes that no backslash escapes.
+sway_workspace_name() {
+    local in out="" c i=0 in_str=false in_chr=false escaped=false
+    # The dots keep a final line break, which $(...) would drop
+    in=$(sway_unescape "$1"; printf .)
+    in=$(sway_unescape "${in%.}"; printf .)
+    in=\"${in%.}\"
+    while [ "$i" -lt "${#in}" ]; do
+        c=${in:i:1}
+        i=$((i + 1))
+        if [ "$c" = "'" ] && ! $in_str && ! $escaped; then
+            if $in_chr; then in_chr=false; else in_chr=true; fi
+            continue
+        elif [ "$c" = '"' ] && ! $in_chr && ! $escaped; then
+            if $in_str; then in_str=false; else in_str=true; fi
+            continue
+        elif [ "$c" = "\\" ]; then
+            if $escaped; then escaped=false; else escaped=true; fi
+        else
+            escaped=false
+        fi
+        out+=$c
+    done
+    printf '%s' "$out"
+}
+
+# workspace_names <array>: set <array>[N] to the name that the window manager
+# of this session gives workspace N from the current wm.workspace.NN.name, or
+# N where it is unset or empty
+workspace_names() {
+    local -n names_ref=$1
+    local -a values=()
+    local n
+    names_ref=()
+    if [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
+        workspace_name_values values < <(trawldb --query wm.workspace. 2>/dev/null)
+    else
+        workspace_name_values values < <(xrdb -query 2>/dev/null)
+    fi
+    for n in $(seq "$WORKSPACE_NAME_COUNT"); do
+        if [ -z "${values[n]-}" ]; then
+            names_ref[n]=$n
+        elif [ "${XDG_SESSION_TYPE-}" == "wayland" ]; then
+            names_ref[n]=$(sway_workspace_name "${values[n]}"; printf .)
+            names_ref[n]=${names_ref[n]%.}
+        else
+            names_ref[n]=$(i3_workspace_name "${values[n]}")
+        fi
+    done
+}
+
 # Set DEFAULT_XRESOURCE_LOOK_PATH to the look used when regolith.look.path is
 # not set: the most recently installed look directory, by birth time, as
 # package updates change the mtime. Use the mtime where there is no birth time.
@@ -257,6 +470,7 @@ load_i3_resources() {
     load_standard_xres # ~/.Xresources
     load_regolith_xres # ~/.config/regolith3/Xresources and the look
     xres_i3_cleanup    # Single-quote workspace names for i3
+    xres_number_workspace_names # Workspace names start with their number
     apply_user_xft_dpi # Xft.dpi from the files above, through gsd-xsettings
 }
 
@@ -267,6 +481,7 @@ load_sway_resources() {
     # workaround to prevent always loading the default look
     load_regolith_trawlres
     trawl_sway_cleanup
+    trawl_number_workspace_names
 }
 
 # Start the X resource database again from what it holds before the login

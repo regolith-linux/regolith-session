@@ -1,0 +1,164 @@
+#!/bin/bash
+# Workspace names from wm.workspace.NN.name, in both sessions: a name without
+# its workspace number still works with the workspace keys and names the first
+# workspace at login, and 'regolith-look refresh' renames the open workspaces
+# that still have Regolith's previous name, but not one the user renamed.
+# Runs the real login paths: regolith-session-x11 with i3 on Xvfb, keys sent
+# with xdotool, and regolith-session-wayland with headless sway and trawld,
+# keys sent with wtype.
+set -u
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+
+if [ "${1-}" != --session ]; then
+    fail=0
+    for session in x11 wayland; do
+        # trawld and the session share one bus
+        HOME="$tmp/home-$session" XDG_RUNTIME_DIR="$tmp/xdg-$session" AUTOPKGTEST_TMP="$tmp" \
+            timeout 600 dbus-run-session -- "$0" --session "$session" || fail=1
+    done
+    exit $fail
+fi
+
+session=$2 fail=0
+export XDG_SESSION_TYPE=$session
+mkdir -p "$HOME/.config/regolith3" "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+log=$tmp/$session-session.log
+
+check() { # check <what> <got> <expected>
+    if [ "$2" = "$3" ]; then
+        echo "ok: $session: $1"
+    else
+        echo "FAIL: $session: $1: got '$2', expected '$3'"
+        fail=1
+    fi
+}
+
+cat > "$HOME/.config/regolith3/Xresources" <<'EOF'
+wm.workspace.01.name: terminal
+wm.workspace.02.name: 2: Web
+wm.workspace.04.name: 2024 plans
+wm.workspace.11.name: chat
+EOF
+
+# NOTIFY_SOCKET marks the systemd-managed session, which runs trawld itself
+if [ "$session" = x11 ]; then
+    export XDG_CURRENT_DESKTOP=Regolith:GNOME-Flashback:GNOME
+    Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp -noreset \
+        3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+    xvfb=$!
+    trap 'kill $xvfb 2>/dev/null || true' EXIT
+    for _ in $(seq 20); do [ -s "$tmp/display" ] && break; sleep 0.5; done
+    DISPLAY=":$(cat "$tmp/display")"
+    export DISPLAY
+    NOTIFY_SOCKET="$tmp/notify" regolith-session-x11 >"$log" 2>&1 &
+    msg=i3-msg terminal=xterm getter=xrescat
+    key() { xdotool key --clearmodifiers "$1"; }
+else
+    export XDG_CURRENT_DESKTOP=Regolith-Wayland:GNOME:sway
+    export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman
+    trawld >"$tmp/trawld.log" 2>&1 &
+    trawl=$!
+    trap 'kill $trawl 2>/dev/null || true' EXIT
+    for _ in $(seq 20); do trawldb -q >/dev/null 2>&1 && break; sleep 0.5; done
+    NOTIFY_SOCKET="$tmp/notify" regolith-session-wayland >"$log" 2>&1 &
+    for _ in $(seq 60); do
+        for SWAYSOCK in "$XDG_RUNTIME_DIR"/sway-ipc.*.sock; do :; done
+        [ -S "$SWAYSOCK" ] && break
+        sleep 0.5
+    done
+    export SWAYSOCK
+    msg=swaymsg terminal=foot getter=trawlcat
+    key() { # key super+ctrl+1
+        local down=() up=() part
+        IFS=+ read -ra parts <<<"$1"
+        for part in "${parts[@]:0:${#parts[@]}-1}"; do
+            [ "$part" = super ] && part=logo
+            down+=(-M "$part"); up=(-m "$part" "${up[@]}")
+        done
+        wtype "${down[@]}" -k "${parts[-1]}" "${up[@]}"
+    }
+fi
+for _ in $(seq 60); do "$msg" -t get_version >/dev/null 2>&1 && break; sleep 0.5; done
+if ! "$msg" -t get_version >/dev/null 2>&1; then
+    cat "$log"
+    echo "FAIL: $session: the window manager did not start"
+    exit 1
+fi
+sleep 2
+if [ "$session" = wayland ]; then
+    for WAYLAND_DISPLAY in "$XDG_RUNTIME_DIR"/wayland-?; do :; done
+    WAYLAND_DISPLAY=${WAYLAND_DISPLAY##*/}
+    export WAYLAND_DISPLAY
+    wtype -k Shift_L # a fresh seat drops the first key
+fi
+
+focused() { "$msg" -t get_workspaces | jq -r '.[] | select(.focused) | .name'; }
+names() { "$msg" -t get_workspaces | jq -r '[.[].name] | sort | join("|")'; }
+press() { # press <keys>: press, then wait for the workspaces to settle
+    key "$1"
+    sleep 1
+}
+windows_on() { # windows_on <workspace>
+    "$msg" -t get_tree | jq --arg ws "$1" \
+        '[.. | objects | select(.type == "workspace" and .name == $ws)
+          | .. | objects | select(.window != null or .app_id != null)] | length'
+}
+
+open_terminal() { # open_terminal <focused workspace>
+    local count
+    count=$(windows_on "$1")
+    "$msg" -q "exec $terminal"
+    for _ in $(seq 20); do [ "$(windows_on "$1")" -gt "$count" ] && return; sleep 0.5; done
+    echo "FAIL: $session: no terminal window on $1"
+    fail=1
+}
+
+# 1. The login path gives each name its number
+check "stored name without a number" "$("$getter" wm.workspace.01.name)" "1:terminal"
+check "stored name with its number" "$("$getter" wm.workspace.02.name)" "2: Web"
+check "stored name with another number" "$("$getter" wm.workspace.04.name)" "4:2024 plans"
+check "stored name of workspace 11" "$("$getter" wm.workspace.11.name)" "11:chat"
+check "first workspace at login" "$(focused)" "1:terminal"
+
+# 2. The workspace keys
+press super+2
+check "Super+2" "$(focused)" "2: Web"
+press super+4
+check "Super+4" "$(focused)" "4:2024 plans"
+open_terminal "4:2024 plans" # keeps the workspace open when it loses the focus
+press super+ctrl+1
+check "Super+Ctrl+1" "$(focused)" "11:chat"
+open_terminal 11:chat
+press super+1
+check "Super+1" "$(focused)" "1:terminal"
+open_terminal 1:terminal
+press super+shift+2
+check "Super+Shift+2 moves the window" "$(windows_on "2: Web")" 1
+check "Super+Shift+2 keeps the focus" "$(focused)" "1:terminal"
+open_terminal 1:terminal
+
+# 3. A refresh renames the workspaces Regolith named, not one the user renamed
+press super+4
+"$msg" -q 'rename workspace to "4:mine"'
+press super+1
+sed -i -e 's/^wm.workspace.01.name: .*/wm.workspace.01.name: 1: Shell/' \
+       -e 's/^wm.workspace.02.name: .*/wm.workspace.02.name: Mail/' \
+       -e 's/^wm.workspace.04.name: .*/wm.workspace.04.name: 4: Notes/' \
+    "$HOME/.config/regolith3/Xresources"
+regolith-look refresh >"$tmp/$session-refresh.log" 2>&1 || {
+    cat "$tmp/$session-refresh.log"; echo "FAIL: $session: regolith-look refresh"; fail=1; }
+before=$(names)
+check "workspaces after the refresh" "$before" "11:chat|1: Shell|2:Mail|4:mine"
+check "focus after the refresh" "$(focused)" "1: Shell"
+check "windows stay on their workspace" "$(windows_on 2:Mail)" 1
+press super+2
+check "Super+2 reaches the renamed workspace" "$(focused)" "2:Mail"
+check "no second workspace 2" "$(names)" "$before"
+regolith-look refresh >>"$tmp/$session-refresh.log" 2>&1 || fail=1
+check "a refresh without changes keeps the names" "$(names)" "$before"
+
+"$msg" -q exit >/dev/null 2>&1 || true
+sleep 1
+exit $fail

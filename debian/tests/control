@@ -102,6 +102,28 @@ Depends: regolith-session-flashback,
          xvfb
 Restrictions: allow-stderr
 
+Tests: workspace-names
+Depends: regolith-session-flashback,
+         regolith-session-sway,
+         regolith-look-default,
+         regolith-wm-navigation,
+         regolith-wm-workspace-config,
+         i3-wm,
+         sway-regolith,
+         dbus,
+         jq,
+         xvfb,
+         x11-xserver-utils,
+         xdotool,
+         xterm,
+         wtype,
+         foot,
+         trawld,
+         trawldb,
+         trawlcat,
+         xrescat
+Restrictions: allow-stderr
+
 Tests: picom-autostart
 Depends: regolith-session-flashback,
          regolith-session-sway,
