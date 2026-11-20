@@ -1,0 +1,262 @@
+#!/bin/bash
+# Restart i3 in place when the DPI it would start with changes.
+#
+# i3 and i3bar read the DPI once, when they start: Xft.dpi from the X
+# resources (the RESOURCE_MANAGER property of the root window), or the
+# screen's physical DPI when that is not set. In the X11 session gsd-xsettings
+# publishes Xft.dpi only after i3 and its bars are up, and again whenever the
+# display scale changes. So at 200 % the bars and i3's title bars came up at
+# half size after every login, and a later scale change did not reach them
+# either, until the user restarted i3.
+#
+# This follows RESOURCE_MANAGER and restarts i3 in place, as Super+Shift+r
+# does, once the DPI differs from the one i3 started with and has held for
+# half a second: 'regolith-look refresh' and 'set' clear the resources for a
+# moment and restart i3 themselves, and gsd-xsettings may write several times
+# in a row.
+#
+# Usage:
+#   regolith-i3-dpi-follower <file>
+#       Follow the DPI. regolith-session-x11 starts this next to i3; it ends
+#       when i3 exits, when the X server goes away, or when the session
+#       script ends.
+#   regolith-i3-dpi-follower --note <file>
+#       Write the DPI that i3 starts with now to <file>. regolith-i3-dpi-start
+#       runs this right before every start of i3, its in-place restarts
+#       included.
+#
+# The DPI noted for the latest start of i3 is the reference. That also covers
+# restarts made by the user or by regolith-look: such a restart picks up what
+# the resources hold at that moment, which can differ from what they hold
+# once the follower sees the restart.
+
+set -u -o pipefail
+
+NOTE=0
+if [ "${1-}" = --note ]; then
+    NOTE=1
+    shift
+fi
+if [ $# -ne 1 ] || [ -z "$1" ]; then
+    echo "usage: ${0##*/} [--note] <file>" >&2
+    exit 2
+fi
+DPI_FILE=$1
+
+SETTLE_US=500000        # how long a new DPI must hold before i3 is restarted
+STALE_BAR_US=10000000   # how long after a restart to look for bars it missed
+RETRY_US=200000         # how soon to try again when i3 does not answer
+
+now_us() {
+    local t=${EPOCHREALTIME/[.,]/}
+    echo "$((10#$t))"
+}
+
+# Set DPI to the DPI that i3 computes when it starts now, as libi3's
+# init_dpi() does: Xft.dpi rounded to the nearest integer, or when that is
+# missing, not a number, negative or rounds to 0, the vertical physical DPI
+# of the screen, rounded down. i3 also takes a few exotic spellings such as
+# hexadecimal numbers; they count as not a number here.
+evaluate() {
+    local value
+    value=$(xrdb -global -get Xft.dpi 2>/dev/null) || value=""
+    DPI=0
+    if [[ $value =~ ^\+?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$ ]]; then
+        DPI=$(awk -v v="$value" 'BEGIN { v += 0; print (v < 1e6 ? int(v + 0.5) : 0) }')
+    fi
+    if ! [ "$DPI" -gt 0 ] 2>/dev/null; then
+        DPI=$(xdpyinfo 2>/dev/null | awk '
+            /^default screen number:/ { want = $4 }
+            /^screen #/ { screen = $2; gsub(/[#:]/, "", screen) }
+            /^ *dimensions:/ && screen == want && !dpi {
+                split($2, px, "x"); size = $4; sub(/^\(/, "", size); split(size, mm, "x")
+                if (mm[2] > 0) dpi = int(px[2] * 25.4 / mm[2])
+            }
+            END { print dpi + 0 }')
+    fi
+}
+
+if [ "$NOTE" = 1 ]; then
+    evaluate
+    echo "$DPI" > "$DPI_FILE.$$" && mv -f "$DPI_FILE.$$" "$DPI_FILE"
+    exit
+fi
+
+# Set NOTED to the DPI noted for the latest start of i3
+read_noted() {
+    NOTED=""
+    { read -r NOTED < "$DPI_FILE"; } 2>/dev/null
+    [[ $NOTED =~ ^[0-9]+$ ]]
+}
+
+# i3 answers only once its startup, which starts the bars, is done
+i3_answers() {
+    timeout 5 i3-msg -t get_version >/dev/null 2>&1
+}
+
+sync_reference() {
+    i3_answers || return 1
+    if read_noted; then REFERENCE=$NOTED; else REFERENCE=$DPI; fi
+    RESYNC=0
+}
+
+# Process start times in /proc/<pid>/stat count clock ticks since boot
+CLK_TCK=$(getconf CLK_TCK 2>/dev/null) || CLK_TCK=100
+boot_ticks() {
+    local up
+    read -r up _ < /proc/uptime
+    echo "$(( ${up%.*} * CLK_TCK + 10#${up#*.} * CLK_TCK / 100 ))"
+}
+
+restart_i3() {
+    i3_answers || return 1
+    # A restart made meanwhile may already have picked up this DPI
+    if read_noted && [ "$NOTED" = "$DPI" ]; then
+        REFERENCE=$DPI RESYNC=0
+        return 0
+    fi
+    echo "Restarting i3 for $DPI dpi, it started with $REFERENCE dpi"
+    RESTARTED_AT=$(boot_ticks)
+    # The reply comes from the restarted i3
+    timeout 5 i3-msg -q restart || return 1
+    REFERENCE=$DPI
+    STALE_BARS_UNTIL=$(($(now_us) + STALE_BAR_US))
+    stop_stale_bars
+}
+
+# A bar exits when i3 restarts, but only once it has connected to i3. A bar
+# that i3 started and that had not connected yet, as at login when the DPI is
+# published right after i3 started, outlives the restart and then joins the
+# new i3, at the DPI it read before, next to the bars that one starts. Stop
+# this user's bars on this display that started before the last restart.
+stop_stale_bars() {
+    local dir comm stat var
+    local -a fields
+    for dir in /proc/[0-9]*; do
+        [ -O "$dir" ] || continue
+        { read -r comm < "$dir/comm"; } 2>/dev/null && [ "$comm" = i3bar ] || continue
+        { read -r stat < "$dir/stat"; } 2>/dev/null || continue
+        read -r -a fields <<< "${stat##*) }"    # from field 3 on
+        [ "${fields[19]-}" -lt "$RESTARTED_AT" ] 2>/dev/null || continue
+        while IFS= read -r -d '' var; do
+            if [ "$var" = "DISPLAY=${DISPLAY-}" ]; then
+                echo "Stopping i3bar ${dir#/proc/}, which started before the restart"
+                kill "${dir#/proc/}" 2>/dev/null
+                break
+            fi
+        done 2>/dev/null < "$dir/environ"
+    done
+}
+
+# Watch i3's shutdown events. The connection ends whenever i3 restarts, so
+# this runs again until i3 is back.
+subscribe() {
+    if [ -n "$SUB_PID" ] && kill -0 "$SUB_PID" 2>/dev/null; then
+        return 0
+    fi
+    SUB_PID=""
+    [ $(($(now_us) - SUB_STARTED)) -ge "$RETRY_US" ] || return 1
+    setpriv --pdeathsig TERM i3-msg -t subscribe -m '["shutdown"]' \
+        >&"$events" 2>/dev/null {events}>&- {lock}>&- </dev/null &
+    SUB_PID=$!
+    SUB_STARTED=$(now_us)
+    return 1
+}
+
+XPROP_PID=""
+SUB_PID=""
+SUB_STARTED=0
+STALE_BARS_UNTIL=0
+RESTARTED_AT=0
+PARTIAL=""      # the start of an event line that a read timeout cut off
+
+cleanup() {
+    trap - EXIT
+    # shellcheck disable=SC2086 # empty when not running
+    kill $XPROP_PID $SUB_PID 2>/dev/null
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT HUP
+
+# One follower per display. When regolith-session-x11 runs again to bring
+# back a crashed i3, the earlier follower is on its way out.
+exec {lock}>>"$DPI_FILE.lock"
+flock -w 5 "$lock" || exit 0
+
+# Every change of the resources and every i3 event arrive on one pipe
+exec {events}<> <(:)
+setpriv --pdeathsig TERM xprop -root -spy -notype \
+    -f RESOURCE_MANAGER 8s ' changed\n' RESOURCE_MANAGER \
+    >&"$events" 2>/dev/null {events}>&- {lock}>&- </dev/null &
+XPROP_PID=$!
+
+evaluate
+LAST=$DPI               # the DPI the resources gave when last looked at
+REFERENCE=$DPI          # the DPI the running i3 started with
+RESYNC=1                # take REFERENCE from the note once i3 answers
+DEADLINE=$(now_us)      # when to act on LAST, empty for nothing to do
+
+while kill -0 "$XPROP_PID" 2>/dev/null; do
+    timeout=1000000
+    subscribe || timeout=$RETRY_US
+    if [ "$STALE_BARS_UNTIL" -gt 0 ]; then
+        if [ "$(now_us)" -lt "$STALE_BARS_UNTIL" ]; then
+            stop_stale_bars
+            [ "$timeout" -le 100000 ] || timeout=100000
+        else
+            STALE_BARS_UNTIL=0
+        fi
+    fi
+    if [ -n "$DEADLINE" ]; then
+        left=$((DEADLINE - $(now_us)))
+        [ "$left" -gt 0 ] || left=0
+        [ "$left" -ge "$timeout" ] || timeout=$left
+    fi
+    printf -v timeout '%d.%06d' $((timeout / 1000000)) $((timeout % 1000000))
+
+    changed=0 line=""
+    if IFS= read -r -t "$timeout" -u "$events" line; then
+        line=$PARTIAL$line PARTIAL=""
+        # Take everything already queued before looking at the resources
+        while :; do
+            case $line in
+                *'"change":"exit"'*)
+                    exit 0 ;;
+                *'"change":"restart"'*)
+                    # The restarted i3 notes what it starts with
+                    RESYNC=1
+                    [ -n "$DEADLINE" ] || DEADLINE=$(($(now_us) + SETTLE_US)) ;;
+                RESOURCE_MANAGER*)
+                    changed=1 ;;
+            esac
+            read -r -t 0 -u "$events" || break
+            IFS= read -r -u "$events" line || break
+        done
+    elif [ $? -gt 128 ]; then
+        # A timeout can strike in the middle of a line that has already
+        # arrived. Keep what was read: the rest of the line follows.
+        PARTIAL+=$line
+    fi
+
+    if [ "$changed" = 1 ]; then
+        evaluate
+        if [ "$DPI" != "$LAST" ]; then
+            LAST=$DPI
+            DEADLINE=$(($(now_us) + SETTLE_US))
+        fi
+    elif [ -n "$DEADLINE" ] && [ "$(now_us)" -ge "$DEADLINE" ]; then
+        DEADLINE=""
+        evaluate
+        if [ "$DPI" != "$LAST" ]; then
+            # Changed again; its event is on the way
+            LAST=$DPI
+            DEADLINE=$(($(now_us) + SETTLE_US))
+            continue
+        fi
+        if [ "$RESYNC" = 1 ] && ! sync_reference; then
+            DEADLINE=$(($(now_us) + RETRY_US))
+        elif [ "$DPI" != "$REFERENCE" ] && ! restart_i3; then
+            DEADLINE=$(($(now_us) + RETRY_US))
+        fi
+    fi
+done

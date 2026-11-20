@@ -14,6 +14,35 @@ gdm3_xrdb_fixup() {
         load_system_xres
     fi
 }
+
+# i3 and i3bar read the DPI (Xft.dpi in the X resources) when they start, but
+# gsd-xsettings publishes it only after i3 is up, and again whenever the scale
+# changes. The follower restarts i3 in place when that DPI changes; it ends
+# with this script.
+DPI_FOLLOWER_PID=""
+DPI_NOTE=""
+
+start_dpi_follower() {
+    local display=${DISPLAY-}
+    if [ -z "${XDG_RUNTIME_DIR-}" ] || ! mkdir -p "$XDG_RUNTIME_DIR/regolith"; then
+        echo "No XDG_RUNTIME_DIR, i3 does not follow DPI changes"
+        return 0
+    fi
+    DPI_NOTE="$XDG_RUNTIME_DIR/regolith/i3-dpi-${display//[^A-Za-z0-9._-]/_}"
+    setpriv --pdeathsig TERM /usr/lib/regolith/regolith-i3-dpi-follower "$DPI_NOTE" &
+    DPI_FOLLOWER_PID=$!
+    trap stop_dpi_follower EXIT
+}
+
+stop_dpi_follower() {
+    if [ -n "$DPI_FOLLOWER_PID" ]; then
+        kill "$DPI_FOLLOWER_PID" 2>/dev/null || true
+        wait "$DPI_FOLLOWER_PID" 2>/dev/null || true
+        DPI_FOLLOWER_PID=""
+        rm -f "$DPI_NOTE"
+    fi
+}
+
 # Check if NOTIFY_SOCKET is available. This is used as a
 # test to see if the session uses systemd
 if [ -z "${NOTIFY_SOCKET-}" ]; then
@@ -52,8 +81,15 @@ if [ ! -e "$UPDATE_FLAG_DIR" ]; then
 fi
 
 resolve_default_config_file
+start_dpi_follower
 echo "Regolith is launching i3 with $I3_CONFIG_FILE"
-i3 -c "$I3_CONFIG_FILE"
+if [ -n "$DPI_FOLLOWER_PID" ]; then
+    # Notes the DPI of every start of i3 for the follower
+    REGOLITH_I3_DPI_NOTE="$DPI_NOTE" /usr/lib/regolith/regolith-i3-dpi-start -c "$I3_CONFIG_FILE"
+else
+    i3 -c "$I3_CONFIG_FILE"
+fi
+stop_dpi_follower
 
 # Run the user's post-logout script. In a systemd-managed session,
 # regolith-post-logout.service runs it when the session ends: logging out

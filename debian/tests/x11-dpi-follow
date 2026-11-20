@@ -1,0 +1,140 @@
+#!/bin/sh
+# i3 and i3bar take the DPI from Xft.dpi when they start, but gsd-xsettings
+# publishes it only after i3 is up, and again when the display scale changes
+# (regolith-desktop#900). The X11 session must bring i3 and the bar on every
+# output to the published DPI, by restarting i3 in place, and leave i3 alone
+# while the DPI stays the same. Runs regolith-session-x11 under Xvfb; xrdb
+# stands in for gsd-xsettings.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/home" XDG_RUNTIME_DIR="$tmp/xdg" XDG_SESSION_TYPE=x11
+mkdir -p "$HOME/.config/regolith3/i3" "$HOME/.config/regolith3/flags" "$XDG_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR"
+cat > "$HOME/.config/regolith3/i3/config" <<'EOF'
+font pango:DejaVu Sans 10
+bar {
+    status_command echo bar
+}
+EOF
+
+Xvfb -displayfd 3 -screen 0 1920x1080x24 -dpi 96 -nolisten tcp -noreset \
+    3>"$tmp/display" >"$tmp/xvfb.log" 2>&1 &
+xvfb=$!
+trap 'kill $xvfb 2>/dev/null || true' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$tmp/display" ] && break; sleep 0.5; done
+display=$(cat "$tmp/display")
+export DISPLAY=":$display"
+
+cat > "$tmp/run" <<'EOF'
+#!/bin/bash
+set -Eeu -o pipefail
+t=$AUTOPKGTEST_TMP
+fail=0
+session=""
+
+bars() { # output=height of each i3bar window
+    xwininfo -root -tree \
+        | sed -n 's/.*"i3bar for output \([^"]*\)".* [0-9]*x\([0-9]*\)[-+][0-9]*[-+][0-9]* .*/\1=\2/p' \
+        | sort | tr '\n' ' '
+}
+bar_pids() { { pgrep -u "$(id -u)" -x i3bar || true; } | sort | tr '\n' ' '; }
+followers() { pgrep -u "$(id -u)" -f /usr/lib/regolith/regolith-i3-dpi-follower || true; }
+check() { # check <what> <command...>
+    local what=$1
+    shift
+    if "$@"; then echo "ok: $what"; else echo "FAIL: $what"; fail=1; fi
+}
+gone() { ! kill -0 "$1" 2>/dev/null; }
+wait_bars() { # wait_bars <seconds> <expected>: until the bars are as expected
+    local end=$((SECONDS + $1))
+    while [ "$(bars)" != "$2" ]; do
+        [ "$SECONDS" -lt "$end" ] || return 1
+        sleep 0.2
+    done
+}
+start_session() {
+    # NOTIFY_SOCKET makes it the systemd-managed session, which keeps PATH
+    NOTIFY_SOCKET="$t/notify" regolith-session-x11 >>"$t/session.log" 2>&1 &
+    session=$!
+    local end=$((SECONDS + 30))
+    until [ -n "$(bars)" ]; do
+        if [ "$SECONDS" -ge "$end" ]; then
+            cat "$t/session.log"
+            echo "FAIL: no bar"
+            exit 1
+        fi
+        sleep 0.2
+    done
+    sleep 2
+}
+end_session() {
+    i3-msg -q exit || true
+    local end=$((SECONDS + 10))
+    while kill -0 "$session" 2>/dev/null && [ "$SECONDS" -lt "$end" ]; do sleep 0.2; done
+    check "the session script ends with i3" gone "$session"
+    sleep 1
+    check "no follower is left after the session" [ -z "$(followers)" ]
+}
+set_dpi() { # set_dpi [<dpi>]: as gsd-xsettings, rewrite the resources
+    xrdb -query | { grep -v '^Xft\.dpi:' || true; } > "$t/res"
+    [ -z "${1-}" ] || printf 'Xft.dpi:\t%s\n' "$1" >> "$t/res"
+    xrdb -nocpp -load "$t/res"
+}
+
+# The bars of i3 started at each DPI
+set_dpi 192
+start_session
+cold192=$(bars)
+end_session
+set_dpi 96
+start_session
+cold96=$(bars)
+end_session
+echo "bars started at 96 dpi: $cold96; at 192 dpi: $cold192"
+check "the bars differ between 96 and 192 dpi" [ "$cold96" != "$cold192" ]
+
+# Login at 200 %: Xft.dpi appears only after i3 and its bars are up. Without
+# it i3 uses the screen's physical DPI, 96 here.
+set_dpi
+start_session
+check "the bars start without Xft.dpi as at 96 dpi" [ "$(bars)" = "$cold96" ]
+check "a single follower runs" [ "$(followers | wc -l)" = 1 ]
+pids=$(bar_pids)
+set_dpi 192
+check "Xft.dpi 192 after login: the bars are as at 192 dpi" wait_bars 10 "$cold192"
+sleep 1
+check "one bar on each output after the restart: $(bars)" [ "$(bars)" = "$cold192" ]
+check "i3 was restarted" [ "$(bar_pids)" != "$pids" ]
+
+# Rewrites that keep the DPI: other settings, the same number spelled
+# differently, a value that goes away and comes back at once
+pids=$(bar_pids)
+printf 'Xcursor.size:\t48\n' | xrdb -merge
+sleep 2
+set_dpi 192.2
+sleep 2
+set_dpi 96; sleep 0.1; set_dpi 192
+sleep 3
+check "no restart while the DPI stays the same" [ "$(bar_pids)" = "$pids" ]
+
+# A scale change later in the session
+set_dpi 96
+check "Xft.dpi 96 later: the bars are as at 96 dpi" wait_bars 10 "$cold96"
+
+# The user restarts i3: no restart on top of it
+pids=$(bar_pids)
+i3-msg -q restart
+sleep 3
+pids2=$(bar_pids)
+sleep 3
+check "the user's restart restarted the bars" [ "$pids2" != "$pids" ]
+check "no extra restart after the user's restart" [ "$(bar_pids)" = "$pids2" ]
+end_session
+
+grep -E 'Restarting i3|Stopping i3bar' "$t/session.log" || true
+exit $fail
+EOF
+chmod +x "$tmp/run"
+
+AUTOPKGTEST_TMP="$tmp" dbus-run-session -- "$tmp/run"

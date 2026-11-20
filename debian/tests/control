@@ -66,6 +66,18 @@ Depends: regolith-session-flashback,
          x11-xserver-utils
 Restrictions: allow-stderr
 
+Tests: x11-dpi-follow
+Depends: regolith-session-flashback,
+         regolith-look-default,
+         i3-wm,
+         dbus,
+         fonts-dejavu-core,
+         procps,
+         x11-utils,
+         x11-xserver-utils,
+         xvfb
+Restrictions: allow-stderr
+
 Tests: ibus-wayland
 Depends: regolith-session-sway,
          ibus,
