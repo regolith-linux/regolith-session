@@ -1,5 +1,6 @@
 usr/bin/regolith-diagnostic
 usr/lib/regolith/regolith-session-common.sh
+usr/lib/regolith/regolith-look-install.sh
 usr/bin/regolith-look
 usr/lib/regolith/regolith-xres-cpp
 usr/lib/systemd/user/regolith-post-logout.service

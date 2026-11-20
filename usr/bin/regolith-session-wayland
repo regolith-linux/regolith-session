@@ -31,7 +31,7 @@ UPDATE_FLAG_DIR="$HOME/.config/regolith3/flags"
 if [ ! -e "$UPDATE_FLAG_DIR" ]; then
     # flag file has not been created, meaning this is first session load
     # in this case, we need to configure some desktop settings from the look
-    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader "")"
     if [ -n  "$LOADER_PATH" ]; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
