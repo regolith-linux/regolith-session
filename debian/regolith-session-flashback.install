@@ -3,6 +3,8 @@ usr/share/xsessions
 usr/share/applications/regolith-x11.desktop
 usr/bin/regolith-session-x11-launch
 usr/bin/regolith-session-x11
+usr/lib/regolith/regolith-i3-dpi-follower
+usr/lib/regolith/regolith-i3-dpi-start
 usr/lib/systemd/user/regolith-x11.service
 usr/lib/systemd/user/regolith-x11-failed.service
 usr/lib/systemd/user/regolith-x11.target

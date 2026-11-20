@@ -21,6 +21,7 @@ Depends: ${misc:Depends},
     regolith-look-default,
     regolith-session-common (= ${binary:Version}),
     x-terminal-emulator,
+    x11-utils,
     x11-xserver-utils,
     xorg,
     xrescat

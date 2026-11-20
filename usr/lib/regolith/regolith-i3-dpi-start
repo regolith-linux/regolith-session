@@ -1,0 +1,10 @@
+#!/bin/bash
+# Start i3 after noting the DPI it starts with for regolith-i3-dpi-follower,
+# in the file named by REGOLITH_I3_DPI_NOTE. i3 restarts in place by running
+# its argv[0] again, with its arguments and its saved layout, so i3 runs
+# under this script's path and its restarts come through here too.
+
+if [ -n "${REGOLITH_I3_DPI_NOTE-}" ]; then
+    /usr/lib/regolith/regolith-i3-dpi-follower --note "$REGOLITH_I3_DPI_NOTE"
+fi
+exec -a "$0" i3 "$@"
