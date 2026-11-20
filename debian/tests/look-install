@@ -1,0 +1,243 @@
+#!/bin/sh
+# regolith-look install fetches a look from a git repository into the user's
+# looks folder, and refuses a look that would run a program or read a file
+# from outside its folder, leaving the folder as it was. list --installed
+# shows the fetched looks, update moves one to its repository's newest
+# commit, and remove takes it away again. A look names its own files with
+# REGOLITH_LOOK_DIR. Values the window manager configuration puts into its
+# include lines, key bindings, shell commands and commands must not change
+# what it does, a look may send the Wayland session's second reading only to
+# itself or a shipped look, and a copy of a shipped look installs. The
+# commands run one at a time.
+set -eu
+
+tmp=${AUTOPKGTEST_TMP:-$(mktemp -d)}
+export HOME="$tmp/user"
+unset XDG_CONFIG_HOME XDG_STATE_HOME
+looks="$HOME/.config/regolith3/looks"
+mkdir -p "$HOME/.config/regolith3"
+export GIT_AUTHOR_NAME=autopkgtest GIT_AUTHOR_EMAIL=autopkgtest@example.invalid
+export GIT_COMMITTER_NAME=autopkgtest GIT_COMMITTER_EMAIL=autopkgtest@example.invalid
+# install reads the clone with --git-dir, which this setting requires
+git config --global safe.bareRepository explicit
+fail=0
+
+ok() { printf 'ok: %s\n' "$1"; }
+bad() { printf 'FAIL: %s\n' "$1"; fail=1; }
+
+# repo <name> <root file text>: a look repository with a stylesheet
+repo() {
+    git init -q -b main "$tmp/$1"
+    printf '%s\n' "$2" >"$tmp/$1/root"
+    echo '/* stylesheet */' >"$tmp/$1/ilia.css"
+    git -C "$tmp/$1" add -A
+    git -C "$tmp/$1" commit -qm "$1"
+}
+
+repo regolith-look-Sunset 'ilia.stylesheet: REGOLITH_LOOK_DIR/ilia.css'
+if out=$(regolith-look install "file://$tmp/regolith-look-Sunset") && [ "$out" = sunset ] \
+   && cmp -s "$tmp/regolith-look-Sunset/ilia.css" "$looks/sunset/ilia.css"; then
+    ok "install fetches the look as sunset"
+else
+    bad "install: $out"
+fi
+
+revision=$(git -C "$tmp/regolith-look-Sunset" rev-parse HEAD)
+if [ "$(regolith-look list --installed)" = "$(printf 'sunset\tfile://%s\t%s' "$tmp/regolith-look-Sunset" "$revision")" ]; then
+    ok "list --installed shows the source and revision"
+else
+    bad "list --installed: $(regolith-look list --installed)"
+fi
+
+if cpp -P -DREGOLITH_LOOK_DIR="$looks/sunset" "$looks/sunset/root" | grep -qxF "ilia.stylesheet: $looks/sunset/ilia.css"; then
+    ok "REGOLITH_LOOK_DIR names the installed folder"
+else
+    bad "REGOLITH_LOOK_DIR"
+fi
+
+for root in 'wm.program.terminal: true' '*terminal: true' '#include "/etc/passwd"' \
+            'regolith.look.loader: REGOLITH_LOOK_DIR/loader.sh'; do
+    rm -rf "$tmp/evil"
+    repo evil "$root"
+    if regolith-look install "file://$tmp/evil" >"$tmp/out" 2>"$tmp/err"; then
+        bad "install accepted a look with: $root"
+    elif [ -e "$looks/evil" ] || [ ! -s "$tmp/err" ]; then
+        bad "a refused install left $looks/evil or no message: $root"
+    else
+        ok "install refuses a look with: $root: $(head -n 1 "$tmp/err")"
+    fi
+done
+
+# Every entry that could supply the loader must name a shipped one, whichever
+# of them a lookup returns
+loader=/usr/share/regolith-look/default_loader.sh
+for root in "regolith.look.loader: /opt/unshipped/loader.sh
+regolith*loader: $loader" "regolith.look.loader: $loader
+regolith*loader: /opt/unshipped/loader.sh"; do
+    rm -rf "$tmp/loader"
+    repo loader "$root"
+    if regolith-look install "file://$tmp/loader" >/dev/null 2>&1 || [ -e "$looks/loader" ]; then
+        bad "install accepted a look with an unshipped loader entry: $root"
+    else
+        ok "install refuses a look with an unshipped loader entry: $(echo "$root" | tr '\n' ' ')"
+    fi
+done
+if [ -f "$loader" ]; then
+    rm -rf "$tmp/loader"
+    repo loader "regolith.look.loader: $loader"
+    if [ "$(regolith-look install "file://$tmp/loader")" = loader ] && regolith-look remove loader; then
+        ok "install accepts a shipped loader"
+    else
+        bad "install refused a shipped loader"
+    fi
+fi
+
+# <resource the configuration reads>|<entry>|<value>: refused when the
+# installed window manager configuration reads the resource
+while IFS='|' read -r resource entry value; do
+    if ! grep -RqsE "^[[:blank:]]*set_from_resource[[:blank:]]+[^[:blank:]]+[[:blank:]]+$resource([[:blank:]]|\$)" \
+            /etc/regolith /usr/share/regolith; then
+        echo "skip: the window manager configuration does not read $resource"
+        continue
+    fi
+    rm -rf "$tmp/value"
+    repo value "$entry: $value"
+    if regolith-look install "file://$tmp/value" </dev/null >"$tmp/out" 2>"$tmp/err"; then
+        bad "install accepted $entry: $value"
+        regolith-look remove value </dev/null || true
+    elif [ -e "$looks/value" ] || [ ! -s "$tmp/err" ]; then
+        bad "a refused install left $looks/value or no message: $entry: $value"
+    else
+        ok "install refuses $entry: $value: $(head -n 1 "$tmp/err")"
+    fi
+done <<'EOF'
+wm.window.border.style|wm.window.border.style|pixel; exec touch /tmp/look-install-border
+wm.window.border.style|wm.window.border.style|pixel\073 exec touch /tmp/look-install-octal
+wm.window.border.style|wm.window.border.style|../../../../../tmp/look-install-include
+ilia.stylesheet|ilia.stylesheet|REGOLITH_LOOK_DIR/ilia.css$(touch /tmp/look-install-ilia)
+ilia.stylesheet|ilia.stylesheet|REGOLITH_LOOK_DIR/ilia.css >/tmp/look-install-redirect
+wm.mod|wm.mod|Mod4+x exec touch /tmp/look-install-mod
+wm.binding.terminal|*binding.terminal|Return exec touch /tmp/look-install-loose
+wm.workspace.01.name|wm.workspace.01.name|1, exec touch /tmp/look-install-workspace
+EOF
+
+# A command resource that only the user's own partial reads, without using
+# it yet, still may not be selected by a loose entry
+mkdir -p "$HOME/.config/regolith3/i3/config.d"
+echo 'set_from_resource $look_install_extra wm.program.look_install_extra true' \
+    >"$HOME/.config/regolith3/i3/config.d/look-install-extra"
+rm -rf "$tmp/value"
+repo value '*look_install_extra: /bin/true'
+if regolith-look install "file://$tmp/value" >/dev/null 2>"$tmp/err" || [ -e "$looks/value" ]; then
+    bad "install accepted *look_install_extra, which selects a command resource of the user's partial"
+    regolith-look remove value || true
+else
+    ok "install refuses a loose entry selecting a command resource of the user's partial: $(head -n 1 "$tmp/err")"
+fi
+rm -rf "$HOME/.config/regolith3/i3"
+
+# A copy of each shipped look, fetched from git, passes the checks
+for dir in /usr/share/regolith-look/*/; do
+    [ -f "$dir/root" ] || continue
+    name=${dir%/}
+    name=copy-of-${name##*/}
+    git init -q -b main "$tmp/$name"
+    cp -R "$dir." "$tmp/$name/"
+    chmod -R a-x+X "$tmp/$name"
+    git -C "$tmp/$name" add -A
+    git -C "$tmp/$name" commit -qm "$name"
+    if [ "$(regolith-look install "file://$tmp/$name" "$name" 2>"$tmp/err")" = "$name" ] \
+       && regolith-look remove "$name"; then
+        ok "install accepts $name"
+    else
+        bad "install refused $name: $(cat "$tmp/err")"
+    fi
+done
+
+echo 'wm.client.focused.color.border: #FF8800' >>"$tmp/regolith-look-Sunset/root"
+git -C "$tmp/regolith-look-Sunset" commit -qam update
+revision=$(git -C "$tmp/regolith-look-Sunset" rev-parse HEAD)
+if [ "$(regolith-look update sunset)" = "sunset $revision" ] \
+   && cmp -s "$tmp/regolith-look-Sunset/root" "$looks/sunset/root"; then
+    ok "update moves the look to the newest commit"
+else
+    bad "update"
+fi
+
+if regolith-look remove sunset && [ ! -e "$looks/sunset" ] && [ -z "$(regolith-look list --installed)" ]; then
+    ok "remove takes the look away"
+else
+    bad "remove"
+fi
+
+# install, update and remove run one at a time: a remove started while an
+# install is still fetching waits for it, and neither shows a look until
+# its install has finished
+repo slow 'ilia.stylesheet: REGOLITH_LOOK_DIR/ilia.css'
+git clone -q --bare "$tmp/slow" "$tmp/slow.git"
+cat >"$tmp/held-ssh" <<'EOF'
+#!/bin/sh
+# Stand-in for ssh: hold the fetch while $HELD exists, then serve it locally
+for arg; do command=$arg; done
+touch "$HELD.started"
+while [ -e "$HELD" ]; do sleep 0.1; done
+exec sh -c "$command"
+EOF
+chmod +x "$tmp/held-ssh"
+export HELD="$tmp/held"
+touch "$HELD"
+GIT_SSH_COMMAND="$tmp/held-ssh" regolith-look install "ssh://localhost$tmp/slow.git" slow >/dev/null &
+installing=$!
+for _ in $(seq 100); do [ -e "$HELD.started" ] && break; sleep 0.1; done
+regolith-look remove slow &
+removing=$!
+sleep 2
+if kill -0 "$removing" 2>/dev/null && [ ! -e "$looks/slow" ] && [ -z "$(regolith-look list --installed)" ]; then
+    waited=1
+else
+    waited=""
+fi
+rm -f "$HELD"
+if wait "$installing" && wait "$removing" && [ -n "$waited" ] && [ ! -e "$looks/slow" ]; then
+    ok "remove waits for the install fetching the same look"
+else
+    bad "remove did not wait for the install, or one of them failed"
+fi
+
+# The Wayland session looks regolith.look.path up again after merging the
+# look, so a look may send it only to itself or a shipped look, and a root
+# it sends it to inside the look is checked too
+rm -rf "$tmp/redirect"
+repo redirect 'regolith.look.path: /opt/elsewhere'
+if regolith-look install "file://$tmp/redirect" >/dev/null 2>"$tmp/err" || [ -e "$looks/redirect" ]; then
+    bad "install accepted a look that sends the session to /opt/elsewhere"
+else
+    ok "install refuses a look that sends the session elsewhere: $(head -n 1 "$tmp/err")"
+fi
+rm -rf "$tmp/redirect"
+repo redirect 'regolith.look.path: REGOLITH_LOOK_DIR/inner'
+mkdir "$tmp/redirect/inner"
+echo 'wm.program.terminal: true' >"$tmp/redirect/inner/root"
+git -C "$tmp/redirect" add -A
+git -C "$tmp/redirect" commit -qm inner
+if regolith-look install "file://$tmp/redirect" >/dev/null 2>"$tmp/err" || [ -e "$looks/redirect" ]; then
+    bad "install accepted a look whose inner root runs a command"
+else
+    ok "install checks the root a look sends the session to: $(head -n 1 "$tmp/err")"
+fi
+rm -rf "$tmp/redirect"
+repo redirect "regolith.look.path: /usr/share/regolith-look/default"
+if [ "$(regolith-look install "file://$tmp/redirect")" = redirect ] && regolith-look remove redirect; then
+    ok "install accepts a look that sends the session to a shipped look"
+else
+    bad "install refused a look that sends the session to a shipped look"
+fi
+
+mkdir -p "$looks/handmade"
+if regolith-look remove handmade 2>/dev/null || [ ! -d "$looks/handmade" ]; then
+    bad "remove took away a look placed by hand"
+else
+    ok "remove refuses a look placed by hand"
+fi
+
+exit $fail

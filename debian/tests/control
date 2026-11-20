@@ -169,6 +169,17 @@ Tests: look-set
 Depends: regolith-session-common
 Restrictions: allow-stderr
 
+Tests: look-install
+Depends: regolith-session-common,
+         git,
+         regolith-look-default,
+         regolith-i3-default-style,
+         regolith-i3-ilia,
+         regolith-wm-base-launchers,
+         regolith-wm-workspace-config,
+         regolith-i3-root-config
+Restrictions: allow-stderr
+
 Tests: diagnostic
 Depends: regolith-session-common,
          regolith-session-sway,

@@ -92,6 +92,7 @@ Package: regolith-session-common
 Architecture: any
 Depends: ${misc:Depends},
     regolith-resource-loader
+Recommends: git
 Breaks: regolith-session (<= 1.1.2),
     regolith-session-flashback (<< 1.2.0~),
     regolith-session-sway (<< 1.2.0~)

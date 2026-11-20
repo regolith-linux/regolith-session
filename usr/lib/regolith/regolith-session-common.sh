@@ -130,6 +130,21 @@ resolve_default_look_path() {
     fi
 }
 
+# Macro that stands for the folder of the look being read, so that a look
+# can name its own files wherever it is installed:
+#   ilia.stylesheet: REGOLITH_LOOK_DIR/ilia.css
+LOOK_DIR_MACRO="REGOLITH_LOOK_DIR"
+
+# Set LOOK_STYLE_DIR to the folder of the look root file LOOK_STYLE_ROOT_FILE,
+# without a slash on the end. The look's files are read with LOOK_DIR_MACRO
+# standing for it.
+resolve_look_style_dir() {
+    LOOK_STYLE_DIR="${LOOK_STYLE_ROOT_FILE%/root}"
+    while [[ "$LOOK_STYLE_DIR" == ?*/ ]]; do
+        LOOK_STYLE_DIR="${LOOK_STYLE_DIR%/}"
+    done
+}
+
 # 1. Load the Regolith Xresource override file if exists
 # 2. Load Regolith Look Xresource as defined in override or use default
 # 3. Re-merge Regolith Xresource override file if exists
@@ -148,8 +163,10 @@ load_regolith_xres() {
         LOOK_STYLE_ROOT_FILE="$DEFAULT_XRESOURCE_LOOK_PATH/root"
     fi
 
+    resolve_look_style_dir
+
     if [ -e "$LOOK_STYLE_ROOT_FILE" ]; then
-        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -merge "$LOOK_STYLE_ROOT_FILE"
+        xrdb -cpp "$XRES_CPP" -I"$USER_XRESOURCE_SEARCH_PATH" -D"$LOOK_DIR_MACRO=$LOOK_STYLE_DIR" -merge "$LOOK_STYLE_ROOT_FILE"
     fi #TODO: emit some dialog notifying user of invalid configuration on else
 
     if [ -e "$USER_XRESOURCE_OVERRIDE_FILE" ]; then
@@ -231,8 +248,10 @@ load_regolith_trawlres() {
         LOOK_STYLE_ROOT_FILE="$DEFAULT_XRESOURCE_LOOK_PATH/root"
     fi
 
+    resolve_look_style_dir
+
     if [ -f "$LOOK_STYLE_ROOT_FILE" ]; then
-        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" --merge "$LOOK_STYLE_ROOT_FILE" 
+        trawldb --cpp "$XRES_CPP" -I "$USER_XRESOURCE_SEARCH_PATH" -D "$LOOK_DIR_MACRO=$LOOK_STYLE_DIR" --merge "$LOOK_STYLE_ROOT_FILE"
     fi #TODO: emit some dialog notifying user of invalid configuration on else
     
     if [ -f "$USER_XRESOURCE_OVERRIDE_FILE" ]; then

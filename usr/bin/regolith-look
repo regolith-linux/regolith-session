@@ -5,10 +5,16 @@ set -Eeu -o pipefail
 
 # Load common functions
 source /usr/lib/regolith/regolith-session-common.sh
+# install, update, remove and list --installed: looks fetched from git
+source /usr/lib/regolith/regolith-look-install.sh
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: regolith-look <command>"
     echo "Actions: "
+    echo "    install <repository> [<name>] - Fetch a look from a git repository into ~/.config/regolith3/looks"
+    echo "    update [<look>] - Move a fetched look, or all of them, to the newest revision of its repository"
+    echo "    remove <look> - Delete a fetched look"
+    echo "    list --installed - Display the fetched looks, with their source and revision"
     echo "    refresh - Update the current session look based on Xresources values"
     echo "    list - Display currently installed looks in the /usr/share/regolith-look directory"
     echo "    set <look> - Write a global override file in the user dir to specify the desired look"
@@ -48,7 +54,7 @@ refresh() {
     fi
 
     # Determine if Look loader script is available
-    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader)"
+    LOADER_PATH="$($RESOURCE_GETTER regolith.look.loader "")"
     if [ -n  "$LOADER_PATH" ]; then
         # Load the look-specific script that has a function called load_look()
         source "$LOADER_PATH"
@@ -90,6 +96,14 @@ set_look() {
 
 if [ "$COMMAND" == "refresh" ]; then
     refresh
+elif [ "$COMMAND" == "install" ]; then
+    install_look "${@:2}"
+elif [ "$COMMAND" == "update" ]; then
+    update_looks "${@:2}"
+elif [ "$COMMAND" == "remove" ]; then
+    remove_look "${@:2}"
+elif [ "$COMMAND" == "list" ] && [ "${2-}" == "--installed" ]; then
+    list_installed_looks
 elif [ "$COMMAND" == "set" ]; then
     LOOK_NAME=${2-}
     if [ -z "$LOOK_NAME" ]; then
